@@ -50,7 +50,8 @@ ENTRY = 'AudioDefence.py'
 
 PLAY_PACKAGES = (('pygame', 'pygame-ce'), ('numpy', 'numpy'), ('av', 'av'), ('comtypes', 'comtypes'),
                  ('prism', 'prismatoid'))
-DATA = (('assets/hrtf', 'assets/hrtf'),)                        # the game's own HRTF
+DATA = (('assets/hrtf', 'assets/hrtf'),                        # the game's own HRTF
+        ('localization', 'localization'))                     # PORT ADDITION: phrase files
 BINARIES = (('vendor/openal/soft_oal.dll', 'vendor/openal'),    # the audio engine itself
             ('vendor/nvda/nvdaControllerClient64.dll', 'vendor/nvda'))
 if host.MAC:

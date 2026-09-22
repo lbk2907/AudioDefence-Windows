@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import logging
 
+from .. import localization
 from ..app import App
 from ..platform.defaults import UserDefaults
 from ..s3d.engine import S3DEngine
@@ -46,7 +47,8 @@ def tarot_row(cards):
     titles = [title for _level, title in cards]
     if not titles:
         return None
-    return ('Tarot card' if len(titles) == 1 else 'Tarot cards'), ' and '.join(titles)
+    label = 'Tarot card' if len(titles) == 1 else 'Tarot cards'
+    return localization.translate(label), ' and '.join(titles)   # PORT ADDITION: chosen language
 
 
 @register('Accessible_ADGameOverEndlessViewController')

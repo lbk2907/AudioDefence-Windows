@@ -30,6 +30,10 @@ import logging
 import pygame
 
 from ..platform import host as system
+from .. import localization
+from .. import localization
+from .. import localization
+from .. import localization
 from ..s3d.engine import S3DEngine
 from .screens import Screen, menu_music_volume_key
 
@@ -102,6 +106,33 @@ class View:
     def __repr__(self) -> str:
         return f'<View {self.name or self.label!r}>'
 
+    # --- text for the player --------------------------------------------------------------------
+    # PORT ADDITION: the label, the hint and the text go through the localization layer as they are
+    # read, so choosing another language takes effect at once and what is stored stays English.
+    @property
+    def label(self) -> str:
+        return localization.translate(self._label)
+
+    @label.setter
+    def label(self, value: str) -> None:
+        self._label = value
+
+    @property
+    def hint(self):
+        return localization.translate(self._hint)
+
+    @hint.setter
+    def hint(self, value) -> None:
+        self._hint = value
+
+    @property
+    def text(self) -> str:
+        return localization.translate(self._text)
+
+    @text.setter
+    def text(self, value: str) -> None:
+        self._text = value
+
     # --- UIControl -------------------------------------------------------------------------------
     def add_target(self, fn) -> None:          # addTarget:action:forControlEvents:UIControlEventTouchUpInside
         if fn not in self.actions:             # UIControl keeps one entry per target-action pair
@@ -132,15 +163,15 @@ class View:
         if getattr(self, 'label_key_words', False):       # PORT ADDITION: see __init__
             from ..platform.pad import menu_words
             label = menu_words(label)
-        parts = (['Selected'] if self.selected else []) + [label]
+        parts = ([localization.translate('Selected')] if self.selected else []) + [label]
         if self.traits == BUTTON:
             if not self.enabled:
-                parts.append('dimmed')
-            parts.append('button')
+                parts.append(localization.translate('dimmed'))
+            parts.append(localization.translate('button'))
         elif self.traits == CELL and not self.enabled:      # PORT ADDITION: a row that cannot be used now
-            parts.append('dimmed')
+            parts.append(localization.translate('dimmed'))
         elif self.traits == HEADER:
-            parts.append('heading')
+            parts.append(localization.translate('heading'))
         text = ', '.join(p for p in parts if p)
         if self.hint:
             from ..platform.pad import menu_words         # PORT ADDITION: in a controller's words, if chosen
@@ -435,7 +466,7 @@ class AccessibleScreen(Screen):
             # unless what they are saying already begins with it.
             entering, self._announce_title = getattr(self, '_announce_title', False), False
             if entering:
-                title = self.page_title
+                title = localization.translate(self.page_title) if self.page_title else None
                 if title and not (prefix or '').startswith(title):
                     prefix = '%s. %s' % (title, prefix) if prefix else title
             elements = self.elements()

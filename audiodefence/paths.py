@@ -33,6 +33,9 @@ else:
 ASSETS = os.path.join(ROOT, 'assets')
 HRTF_DIR = os.path.join(ASSETS, 'hrtf')
 VENDOR = os.path.join(ROOT, 'vendor')
+#: PORT ADDITION: the phrase files the optional localization reads (audiodefence/localization.py).
+#: Bundled like assets/, so a language file lives inside the build.
+LOCALIZATION = os.path.join(ROOT, 'localization')
 OPENAL_DLL = (os.path.join(VENDOR, 'openal-mac', 'libopenal.dylib') if host.MAC else
               os.path.join(VENDOR, 'openal', 'soft_oal.dll'))
 NVDA_DLL = os.path.join(VENDOR, 'nvda', 'nvdaControllerClient64.dll')

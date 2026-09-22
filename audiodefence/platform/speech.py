@@ -14,6 +14,10 @@ from ctypes import wintypes
 from xml.sax.saxutils import escape
 
 from .. import paths
+from .. import localization
+from .. import localization
+from .. import localization
+from .. import localization
 from . import host
 
 log = logging.getLogger('speech')
@@ -421,7 +425,7 @@ class Speech:
     def speak(self, text, interrupt: bool = True) -> None:
         if not text:
             return
-        text = str(text)
+        text = localization.translate(str(text))          # PORT ADDITION: the player's chosen language
         log.debug('speak: %s', text)
         choice = self.choice
         if choice not in PRISM_NAMES and choice not in (SCREEN_READER, 'sapi'):

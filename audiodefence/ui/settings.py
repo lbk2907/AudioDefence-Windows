@@ -23,6 +23,9 @@ import time
 import pygame
 
 from ..app import App
+from .. import localization
+from .. import localization
+from .. import localization
 from ..game import data
 from ..game.parameters import GameParameters
 from ..platform import host as system
@@ -157,6 +160,12 @@ class ControlSchemePanel:
             t.cell('Tutorial text', self.tutorial_text_text(),
                    hint='Press Enter for the next setting and Shift plus Enter for the previous.',
                    action=self.step_tutorial_text, shift_action=self.step_tutorial_text_back)
+            t.cell('Language', dict(params.LANGUAGES)[params.language()],
+                   hint="The language the port's own text is shown and spoken in. English is what "
+                        'the port was written in; another language translates it as it is read, which '
+                        'takes effect as each screen is opened again. Press Enter for the next '
+                        'language and Shift plus Enter for the previous.',
+                   action=self.step_language, shift_action=self.step_language_back)
             from ..platform.pad import Pads
             models = Pads.shared().connected_models()
             row = t.cell('Names in hints and tutorial', dict(params.KEY_NAMES)[params.key_names()],
@@ -295,7 +304,7 @@ class ControlSchemePanel:
     def category_keys_text() -> str:
         """Both pairs of arrows, whichever way round the player has them: "Up and Down change category,
         Left and Right move through it"."""
-        return cross_axis_text().replace('tab', 'category')
+        return localization.translate(cross_axis_text().replace('tab', 'category'))
 
     def move_category(self, where: str) -> None:
         """PORT ADDITION: the arrows the menu navigation is not using move between categories - 'next',
@@ -477,6 +486,20 @@ class ControlSchemePanel:
 
     def step_trigger_level_back(self) -> None:
         self.step_trigger_level(-1)
+
+    def step_language(self, step: int = 1) -> None:
+        """The next language, read in as soon as it is chosen, so the rows and the screens that
+        are opened after this one are in it.  A row already on screen keeps the text it was built
+        with until the screen is opened again."""
+        params = GameParameters.shared()
+        keys = [key for key, _name in params.LANGUAGES]
+        params.set_language(keys[(keys.index(params.language()) + step) % len(keys)])
+        localization.load(params.language(), force=True)   # PORT ADDITION: read it in at once
+        self.reload_data()
+        self.announce('Language: %s' % dict(params.LANGUAGES)[params.language()])
+
+    def step_language_back(self) -> None:
+        self.step_language(-1)
 
     def toggle_key_names(self) -> None:
         params = GameParameters.shared()

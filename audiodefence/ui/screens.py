@@ -10,6 +10,9 @@ import logging
 
 import pygame
 
+from .. import localization
+from .. import localization
+from .. import localization
 from ..platform.speech import Speech
 
 log = logging.getLogger('ui')
@@ -78,12 +81,13 @@ class MenuItem:
     def __init__(self, label, action=None, hint: str | None = None, enabled=True):
         self._label = label
         self.action = action
-        self.hint = hint
+        self.hint = localization.translate(hint) if hint else hint      # PORT ADDITION: chosen language
         self._enabled = enabled
 
     @property
     def label(self) -> str:
-        return self._label() if callable(self._label) else str(self._label)
+        text = self._label() if callable(self._label) else str(self._label)
+        return localization.translate(text)                             # PORT ADDITION: chosen language
 
     @property
     def enabled(self) -> bool:
@@ -92,7 +96,7 @@ class MenuItem:
     def spoken(self) -> str:
         text = self.label
         if not self.enabled:
-            text += ', dimmed'
+            text += ', ' + localization.translate('dimmed')
         if self.hint:
             from ..platform.pad import menu_words         # PORT ADDITION: in a controller's words, if chosen
             text += f'. {menu_words(self.hint)}'
@@ -119,7 +123,7 @@ class MenuScreen(Screen):
     def announce_screen(self) -> None:
         parts = []
         if self.title:
-            parts.append(self.title)
+            parts.append(localization.translate(self.title))            # PORT ADDITION: chosen language
         if self.items:
             self.index = min(self.index, len(self.items) - 1)
             parts.append(self.items[self.index].spoken())

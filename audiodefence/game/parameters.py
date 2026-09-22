@@ -284,6 +284,20 @@ class GameParameters:
         self.defaults.set_bool(bool(value), 'fineHaptics')
         self.defaults.synchronize()
 
+    #: PORT ADDITION: Settings -> Miscellaneous -> Language: the language the port's own text is shown and
+    #: spoken in (audiodefence/localization.py, localization/<code>.json).  English by default, so a player
+    #: who does not choose one sees exactly what the port always showed.
+    LANGUAGES = (('en', 'English'), ('ru', 'Русский'))
+    DEFAULT_LANGUAGE = 'en'
+
+    def language(self) -> str:
+        value = self.defaults.object('language')
+        return value if value in dict(self.LANGUAGES) else self.DEFAULT_LANGUAGE
+
+    def set_language(self, value: str) -> None:
+        self.defaults.set_object(value, 'language')
+        self.defaults.synchronize()
+
     #: PORT ADDITION: Settings -> Miscellaneous -> Speech output: Automatic, or one screen reader or voice
     #: only (platform/speech.py OUTPUTS).  Automatic by default, as it always was.
     DEFAULT_SPEECH_OUTPUT = 'auto'
