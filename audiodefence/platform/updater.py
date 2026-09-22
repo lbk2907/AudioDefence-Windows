@@ -20,6 +20,14 @@ files they will overwrite are backed up beside them, and a small PowerShell scri
 exit, copies the staged files in, and starts the game again.  If the copy fails it puts the backup back.
 The script is PowerShell rather than a .cmd because a player's folder can have non-ASCII characters in it
 and batch handles those badly.
+
+**The Mac.**  The same, with the Mac's names: the saves are in ``~/Library/Application Support/AudioDefence``,
+the release asset is ``AudioDefenceMac-<VERSION>.zip`` (each build takes the zip made for it, off the same
+release), what is replaced is ``AudioDefence.app`` beside readme.html and the rest, and the hand-off is a
+shell script, which puts the files in with ``ditto`` and opens the app again.  An app is full of symbolic
+links, so the zip keeps them as links (with each file's execute bit), and they are compared, fetched and put
+in place as links.  An app macOS is running from a private copy (App Translocation, for an app opened where
+it was downloaded) cannot be updated, and the player is told to move it first.
 """
 from __future__ import annotations
 
@@ -31,10 +39,11 @@ import subprocess
 import sys
 import urllib.error
 import urllib.request
+import stat
 import zipfile
 import zlib
 
-from . import version
+from . import host, version
 from .. import paths
 from .remotezip import RemoteZip, RemoteZipError, USER_AGENT
 
@@ -47,7 +56,7 @@ TIMEOUT = 20
 
 #: the folders a build owns completely, and so the only ones a file is ever deleted from.  Anything a
 #: player has put in the game's folder themselves is left alone.
-OWNED_DIRS = ('_internal/', 'game/')
+OWNED_DIRS = ('AudioDefence.app/',) if host.MAC else ('_internal/', 'game/')
 #: read and written in whole-megabyte order; small enough that a cancel is noticed quickly
 CHUNK = 1 << 20
 
@@ -65,12 +74,26 @@ class Release:
         self.asset_name = ''
         self.asset_url = ''
         self.asset_size = 0
-        for asset in data.get('assets') or ():
-            if str(asset.get('name', '')).lower().endswith('.zip'):
+        # the zips' names, and why the Mac's has no dash, are in host.ARCHIVE_PREFIXES
+        zips = [asset for asset in data.get('assets') or () if str(asset.get('name', '')).lower().endswith('.zip')]
+        for asset in sorted(zips, key=lambda asset: -self.suits(str(asset.get('name', '')))):
+            if self.suits(str(asset.get('name', ''))):
                 self.asset_name = asset['name']
                 self.asset_url = asset['browser_download_url']
                 self.asset_size = int(asset.get('size') or 0)
                 break
+
+    @staticmethod
+    def suits(name: str) -> int:
+        """How well a zip on the release fits this build: 2 for this platform's own
+        ('AudioDefenceMac-26.09.22-1.zip' on the Mac, host.archive_name), 1 on Windows for a zip that names
+        no platform, as the first releases' did, 0 for the other platform's, which is never taken."""
+        low = name.lower()
+        if low.startswith(host.ARCHIVE_PREFIXES[host.ARCHIVE_TAG].lower()):
+            return 2
+        others = [prefix.lower() for tag, prefix in host.ARCHIVE_PREFIXES.items() if tag != host.ARCHIVE_TAG]
+        others.append('audiodefence-mac-')                # the Mac zip's name before it lost its dash
+        return 0 if host.MAC or any(low.startswith(other) for other in others) else 1
 
     def __repr__(self) -> str:
         return '<Release %s %s>' % (self.tag, self.asset_name or 'no zip')
@@ -99,7 +122,15 @@ class Plan:
 
 # ================================================================================ where we are installed
 def install_dir() -> str:
+    """The folder a release's zip unpacks over: the one holding AudioDefence.exe, or AudioDefence.app."""
     return paths.EXE_DIR
+
+
+def restart_target() -> str:
+    """What the hand-off starts again once the files are in: the executable, or the Mac app."""
+    if host.MAC:
+        return getattr(paths, 'APP_BUNDLE', os.path.join(install_dir(), 'AudioDefence.app'))
+    return sys.executable if paths.FROZEN else os.path.join(install_dir(), 'AudioDefence.exe')
 
 
 def updates_dir() -> str:
@@ -173,6 +204,10 @@ def can_update() -> tuple:
     if not paths.FROZEN:
         return False, 'this is the source version, so it updates with git rather than from a release'
     root = install_dir()
+    if host.MAC and '/AppTranslocation/' in restart_target():
+        return False, ('macOS is running the game from a temporary copy, as it does for an app opened where '
+                       'it was downloaded. Move the AudioDefence folder somewhere else with Finder, your '
+                       'Applications folder for one, and open the game from there')
     try:
         probe = os.path.join(root, '.update-probe')
         with open(probe, 'w') as fh:
@@ -180,7 +215,9 @@ def can_update() -> tuple:
         os.remove(probe)
     except OSError:
         return False, ('the game is installed somewhere it cannot write to. Move it out of Program Files, '
-                       'or run the update as an administrator')
+                       'or run the update as an administrator' if not host.MAC else
+                       'the game is in a folder it cannot write to. Move the AudioDefence folder somewhere '
+                       'you can write to, such as your Applications or Documents folder')
     return True, ''
 
 
@@ -216,7 +253,8 @@ def check() -> Release | None:
         log.info('%s is the newest release and this build is %s', release.tag, here)
         return None
     if not release.asset_url:
-        raise UpdateError('release %s has no zip to download' % release.tag)
+        raise UpdateError('release %s has no zip to download for %s' % (release.tag, 'the Mac' if host.MAC
+                                                                             else 'Windows'))
     return release
 
 
@@ -234,6 +272,39 @@ def _crc(path: str) -> int | None:
         return crc
     except OSError:
         return None
+
+
+def _installed_crc(path: str, link: bool) -> int | None:
+    """What an installed file is to compare with a member of the zip: its contents' CRC-32, or - for a
+    symbolic link, whose member holds where it points - the CRC-32 of where it points.  A file where the
+    release has a link, or a link where it has a file, matches nothing, so it is replaced."""
+    if os.path.islink(path) != link:
+        return None
+    if link:
+        try:
+            return zlib.crc32(os.readlink(path).encode('utf-8'))
+        except OSError:
+            return None
+    return _crc(path)
+
+
+def _write_member(destination: str, data: bytes, mode: int) -> None:
+    """One member into the staging folder, as the link or the file it is, execute bit and all."""
+    os.makedirs(os.path.dirname(destination), exist_ok=True)
+    if os.path.lexists(destination):
+        os.remove(destination)
+    if stat.S_ISLNK(mode):
+        os.symlink(data.decode('utf-8'), destination)
+        return
+    with open(destination, 'wb') as fh:
+        fh.write(data)
+    if mode & 0o111:
+        os.chmod(destination, stat.S_IMODE(mode))
+
+
+def _info_mode(info: zipfile.ZipInfo) -> int:
+    """The Unix mode a zip member carries, or 0 for one made on Windows."""
+    return info.external_attr >> 16 if info.create_system == 3 else 0
 
 
 def _strip_prefix(names) -> str:
@@ -268,7 +339,7 @@ def build_plan(release: Release, cancelled=None) -> Plan:
             continue
         wanted.add(relative)
         local = os.path.join(root, relative.replace('/', os.sep))
-        here = _crc(local)
+        here = _installed_crc(local, entry.is_link)
         if here == entry.crc:
             plan.unchanged += 1
         else:
@@ -284,8 +355,9 @@ def _stale_files(root: str, wanted: set) -> list:
         base = os.path.join(root, owned.rstrip('/').replace('/', os.sep))
         if not os.path.isdir(base):
             continue
-        for dirpath, _dirs, files in os.walk(base):
-            for name in files:
+        for dirpath, dirs, files in os.walk(base):
+            # a link to a folder is one member of the zip, not a folder to look inside
+            for name in files + [d for d in dirs if os.path.islink(os.path.join(dirpath, d))]:
                 full = os.path.join(dirpath, name)
                 relative = os.path.relpath(full, root).replace(os.sep, '/')
                 if relative not in wanted:
@@ -328,10 +400,7 @@ def _download_changed_members(plan: Plan, payload: str, progress, cancelled) -> 
     for relative, entry in plan.fetch:
         _stop(cancelled)
         data = plan.archive.read(entry)                   # CRC checked inside
-        destination = os.path.join(payload, relative.replace('/', os.sep))
-        os.makedirs(os.path.dirname(destination), exist_ok=True)
-        with open(destination, 'wb') as fh:
-            fh.write(data)
+        _write_member(os.path.join(payload, relative.replace('/', os.sep)), data, entry.mode)
         done += entry.compressed_size
         _report(progress, done, total, relative)
 
@@ -371,13 +440,19 @@ def _download_whole_archive(plan: Plan, payload: str, progress, cancelled) -> No
             if not relative:
                 continue
             wanted.add(relative)
-            if _crc(os.path.join(root, relative.replace('/', os.sep))) == info.CRC:
+            mode = _info_mode(info)
+            if _installed_crc(os.path.join(root, relative.replace('/', os.sep)), stat.S_ISLNK(mode)) == info.CRC:
                 plan.unchanged += 1
                 continue
             destination = os.path.join(payload, relative.replace('/', os.sep))
+            if stat.S_ISLNK(mode):
+                _write_member(destination, zf.read(info), mode)
+                continue
             os.makedirs(os.path.dirname(destination), exist_ok=True)
             with zf.open(info) as src, open(destination, 'wb') as dst:
                 shutil.copyfileobj(src, dst, CHUNK)
+            if mode & 0o111:
+                os.chmod(destination, stat.S_IMODE(mode))
         plan.remove = _stale_files(root, wanted)
     os.remove(archive_path)
     plan.fetch = []                                       # the payload is built; nothing left to fetch
@@ -386,8 +461,8 @@ def _download_whole_archive(plan: Plan, payload: str, progress, cancelled) -> No
 # ============================================================================== backing up and handing over
 def _payload_files(payload: str) -> list:
     out = []
-    for dirpath, _dirs, files in os.walk(payload):
-        for name in files:
+    for dirpath, dirs, files in os.walk(payload):
+        for name in files + [d for d in dirs if os.path.islink(os.path.join(dirpath, d))]:
             full = os.path.join(dirpath, name)
             out.append(os.path.relpath(full, payload).replace(os.sep, '/'))
     return out
@@ -401,11 +476,14 @@ def back_up(staging: str, remove) -> str:
     shutil.rmtree(backup, ignore_errors=True)
     for relative in _payload_files(payload) + list(remove):
         source = os.path.join(root, relative.replace('/', os.sep))
-        if not os.path.isfile(source):
+        if not (os.path.isfile(source) or os.path.islink(source)):
             continue                                      # a new file has nothing to put back
         destination = os.path.join(backup, relative.replace('/', os.sep))
         os.makedirs(os.path.dirname(destination), exist_ok=True)
-        shutil.copy2(source, destination)
+        if os.path.islink(source):                        # a link is put back as the link it was
+            os.symlink(os.readlink(source), destination)
+        else:
+            shutil.copy2(source, destination)
     return backup
 
 
@@ -461,7 +539,7 @@ def write_handoff(staging: str, remove) -> str:
         payload=_ps_literal(os.path.join(staging, 'payload')),
         backup=_ps_literal(os.path.join(staging, 'backup')),
         staging=_ps_literal(staging),
-        exe=_ps_literal(sys.executable if paths.FROZEN else os.path.join(install_dir(), 'AudioDefence.exe')),
+        exe=_ps_literal(restart_target()),
         removals=removals,
     )
     path = os.path.join(staging, 'apply.ps1')
@@ -470,10 +548,82 @@ def write_handoff(staging: str, remove) -> str:
     return path
 
 
+def _sh_literal(text: str) -> str:
+    """A shell single-quoted string: a quote ends it, is escaped, and starts it again."""
+    return "'%s'" % str(text).replace("'", "'\\''")
+
+
+#: the Mac's hand-off, the same steps as SCRIPT.  ditto merges the staged files into the installed ones,
+#: links as links; `open` starts the app the way Finder would.
+SH_SCRIPT = """\
+#!/bin/bash
+pid={pid}
+install={install}
+payload={payload}
+backup={backup}
+staging={staging}
+app={app}
+removals=({removals})
+
+# Wait for the game to let go of its files.
+for i in $(seq 600); do
+    kill -0 "$pid" 2>/dev/null || break
+    sleep 0.1
+done
+sleep 0.3
+
+put_in() {{
+    ditto "$payload" "$install" || return 1
+    for relative in "${{removals[@]}}"; do
+        rm -f "$install/$relative" || return 1
+    done
+}}
+
+if ! put_in; then
+    # Put back exactly what was replaced, then leave the staging folder for a bug report.
+    if [ -d "$backup" ]; then ditto "$backup" "$install"; fi
+    open "$app"
+    exit 1
+fi
+
+open "$app"
+rm -rf "$staging"
+"""
+
+
+def write_handoff_sh(staging: str, remove) -> str:
+    """The Mac's hand-off script, and its path."""
+    script = SH_SCRIPT.format(
+        pid=os.getpid(),
+        install=_sh_literal(install_dir()),
+        payload=_sh_literal(os.path.join(staging, 'payload')),
+        backup=_sh_literal(os.path.join(staging, 'backup')),
+        staging=_sh_literal(staging),
+        app=_sh_literal(restart_target()),
+        removals=' '.join(_sh_literal(r) for r in remove),
+    )
+    path = os.path.join(staging, 'apply.sh')
+    with open(path, 'w', encoding='utf-8', newline='\n') as fh:
+        fh.write(script)
+    os.chmod(path, 0o755)
+    return path
+
+
 def apply(staging: str, remove) -> None:
     """Start the hand-off and return.  The caller quits the game straight afterwards."""
     remove = list(remove)
     back_up(staging, remove)
+    if host.MAC:
+        script = write_handoff_sh(staging, remove)
+        try:
+            # a session of its own, so it is not taken down with the game; not cwd=staging, which it deletes
+            subprocess.Popen(['/bin/bash', script], cwd=paths.user_dir(), start_new_session=True, close_fds=True,
+                             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except OSError as exc:
+            raise UpdateError('the update could not be started: %s' % exc) from exc
+        log.info('hand-off started; %d files to copy, %d to remove',
+                 len(_payload_files(os.path.join(staging, 'payload'))), len(remove))
+        return
     script = write_handoff(staging, remove)
     # CREATE_NO_WINDOW and nothing else.  DETACHED_PROCESS looks like the right flag for something that
     # has to outlive us, and it is not: it gives the child no console, and powershell.exe with no console

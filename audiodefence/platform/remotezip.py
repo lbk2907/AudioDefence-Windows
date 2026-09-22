@@ -18,6 +18,7 @@ so the caller can fall back to downloading the whole file.  The port's releases 
 from __future__ import annotations
 
 import logging
+import stat
 import struct
 import urllib.error
 import urllib.request
@@ -44,15 +45,21 @@ class RemoteZipError(Exception):
 
 
 class Entry:
-    __slots__ = ('name', 'crc', 'compressed_size', 'size', 'method', 'header_offset')
+    __slots__ = ('name', 'crc', 'compressed_size', 'size', 'method', 'header_offset', 'mode')
 
-    def __init__(self, name, crc, compressed_size, size, method, header_offset):
+    def __init__(self, name, crc, compressed_size, size, method, header_offset, mode=0):
         self.name = name
         self.crc = crc
         self.compressed_size = compressed_size
         self.size = size
         self.method = method
         self.header_offset = header_offset
+        self.mode = mode                                  # the Unix mode a Mac archive keeps, else 0
+
+    @property
+    def is_link(self) -> bool:
+        """A symbolic link, whose data is where it points: what a Mac app is full of."""
+        return stat.S_ISLNK(self.mode)
 
     @property
     def is_dir(self) -> bool:
@@ -129,16 +136,19 @@ class RemoteZip:
             if directory[at:at + 4] != CENTRAL_FILE_HEADER:
                 raise RemoteZipError('the central directory is not laid out as expected')
             # from +10: method, (time, date), crc, compressed, uncompressed, name, extra and comment
-            # lengths, (disk, internal and external attributes), and where the local header sits
+            # lengths, (disk and internal attributes), external attributes, and where the local header
+            # sits.  The external attributes hold a Unix mode, links and execute bits, when the archive
+            # says it was made on Unix (3, in the high byte of +4)
             (method, crc, compressed_size, size, name_length, extra_length, comment_length,
-             header_offset) = struct.unpack('<H4xIIIHHH8xI', directory[at + 10:at + 46])
+             attributes, header_offset) = struct.unpack('<H4xIIIHHH4xII', directory[at + 10:at + 46])
+            mode = attributes >> 16 if directory[at + 5] == 3 else 0
             name = directory[at + 46:at + 46 + name_length]
             try:
                 name = name.decode('utf-8')
             except UnicodeDecodeError:
                 name = name.decode('cp437')               # what a zip without the UTF-8 flag uses
             entries[name.replace('\\', '/')] = Entry(name.replace('\\', '/'), crc, compressed_size,
-                                                     size, method, header_offset)
+                                                     size, method, header_offset, mode)
             at += 46 + name_length + extra_length + comment_length
         return entries
 

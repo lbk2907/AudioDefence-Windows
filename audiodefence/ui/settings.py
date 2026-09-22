@@ -25,7 +25,9 @@ import pygame
 from ..app import App
 from ..game import data
 from ..game.parameters import GameParameters
+from ..platform import host as system
 from ..platform.keymap import ACTIONS, BY_MODE, KeyMap, key_text, mode_text
+from ..platform.speech import VOICE_NAME
 from ..s3d.engine import S3DEngine
 from .accessibility import (CELL, Button, View, cross_axis_key, cross_axis_text, menu_tick,
                             play_button_click)
@@ -34,6 +36,10 @@ from .host import register
 from .viewcontroller import ViewControllerScreen
 
 log = logging.getLogger('ui.settings')
+
+#: where the voice starts, before one is chosen: what Settings -> Speech's voice row says it defaults to
+VOICE_DEFAULT_HINT = ('the one set in Spoken Content, in System Settings' if system.MAC else
+                      'the one set in Control Panel')
 
 
 def _headphones_playlist():
@@ -193,10 +199,11 @@ class ControlSchemePanel:
         elif self.category == 'speech':                   # PORT ADDITION: who speaks, and SAPI 5's voice
             from ..platform.speech import OUTPUTS
             t.cell('Speech output', dict(OUTPUTS)[params.speech_output()],
-                   hint='Which screen reader or voice speaks the game. Automatic uses NVDA, or another screen '
-                        'reader that is running, or SAPI 5 when none is. Choose one and only that one speaks: '
-                        'the game is silent while it is not running. Press Enter for the next setting and '
-                        'Shift plus Enter for the previous.',
+                   hint='Which screen reader or voice speaks the game. Automatic uses %s. Choose one and only '
+                        'that one speaks: the game is silent while it is not running. Press Enter for the next '
+                        'setting and Shift plus Enter for the previous.'
+                        % ('VoiceOver, or the system voice when VoiceOver is off' if system.MAC else
+                           'NVDA, or another screen reader that is running, or SAPI 5 when none is'),
                    action=self.step_speech_output, shift_action=self.step_speech_output_back)
             self.sapi_shown = self.sapi_speaking()
             if self.sapi_shown:                           # only while SAPI 5 is what speaks
@@ -523,31 +530,32 @@ class ControlSchemePanel:
         self._speech_due = now + self.SPEECH_CHECK_EVERY
         if self.sapi_speaking() != self.sapi_shown:
             self.reload_data()
-    CONTROL_PANEL_VOICE = 'Control Panel default'
+    CONTROL_PANEL_VOICE = 'System default' if system.MAC else 'Control Panel default'
 
     def sapi_rows(self, t, params) -> None:
-        """SAPI 5's voice, rate, rate boost (for a voice that has one), pitch and volume.  Each change is
-        said in SAPI 5 itself, at the new setting, so it can be heard whatever else is speaking."""
+        """SAPI 5's voice, rate, rate boost (for a voice that has one), pitch and volume - the system voice's,
+        on the Mac.  Each change is said in that voice itself, at the new setting, so it can be heard
+        whatever else is speaking."""
         from ..platform.speech import Speech
         sapi = Speech.shared().sapi
         if sapi.voice is None:                            # no SAPI here (comtypes missing)
             return
         config = params.sapi_config()
         names = dict(sapi.voices())
-        t.cell('SAPI 5 voice', names.get(config['voice'], self.CONTROL_PANEL_VOICE),
-               hint='The voice SAPI 5 speaks with: the one set in Control Panel, or any installed voice. '
+        t.cell(VOICE_NAME + ' voice', names.get(config['voice'], self.CONTROL_PANEL_VOICE),
+               hint='The voice %s speaks with: %s, or any installed voice. ' % (VOICE_NAME, VOICE_DEFAULT_HINT)
                     + self.SAPI_STEP_HINT,
                action=self.step_sapi_voice, shift_action=self.step_sapi_voice_back)
-        t.cell('SAPI 5 rate', str(sapi.rate()), hint='How fast SAPI 5 speaks, from -10 to 10. ' + self.SAPI_STEP_HINT,
+        t.cell(VOICE_NAME + ' rate', str(sapi.rate()), hint='How fast %s speaks, from -10 to 10. ' % VOICE_NAME + self.SAPI_STEP_HINT,
                action=self.step_sapi_rate, shift_action=self.step_sapi_rate_back)
         if sapi.boost_supported(config['voice'] if config['voice'] in names else None):
-            t.cell('SAPI 5 rate boost', 'ON' if config['boost'] else 'OFF',
+            t.cell(VOICE_NAME + ' rate boost', 'ON' if config['boost'] else 'OFF',
                    hint='Press Enter to toggle: when on, this voice speaks faster again than its rate.',
                    action=self.toggle_sapi_boost, shift_action=self.toggle_sapi_boost)
-        t.cell('SAPI 5 pitch', str(config['pitch']), hint='How high SAPI 5 speaks, from -10 to 10. '
+        t.cell(VOICE_NAME + ' pitch', str(config['pitch']), hint='How high %s speaks, from -10 to 10. ' % VOICE_NAME
                                                           + self.SAPI_STEP_HINT,
                action=self.step_sapi_pitch, shift_action=self.step_sapi_pitch_back)
-        t.cell('SAPI 5 volume', '%d%%' % sapi.volume(), hint='How loud SAPI 5 speaks. ' + self.SAPI_STEP_HINT,
+        t.cell(VOICE_NAME + ' volume', '%d%%' % sapi.volume(), hint='How loud %s speaks. ' % VOICE_NAME + self.SAPI_STEP_HINT,
                action=self.step_sapi_volume, shift_action=self.step_sapi_volume_back)
 
     @staticmethod
@@ -565,7 +573,7 @@ class ControlSchemePanel:
         params.set_sapi(voice=ids[(index + step) % len(ids)])
         self.reload_data()
         chosen = params.sapi_config()['voice']
-        self._sapi_say('SAPI 5 voice: %s' % dict(voices).get(chosen, self.CONTROL_PANEL_VOICE))
+        self._sapi_say('%s voice: %s' % (VOICE_NAME, dict(voices).get(chosen, self.CONTROL_PANEL_VOICE)))
 
     def step_sapi_voice_back(self) -> None:
         self.step_sapi_voice(-1)
@@ -575,7 +583,7 @@ class ControlSchemePanel:
         params = GameParameters.shared()
         params.set_sapi(rate=max(-10, min(10, Speech.shared().sapi.rate() + step)))   # the ends hold
         self.reload_data()
-        self._sapi_say('SAPI 5 rate %d' % Speech.shared().sapi.rate())
+        self._sapi_say('%s rate %d' % (VOICE_NAME, Speech.shared().sapi.rate()))
 
     def step_sapi_rate_back(self) -> None:
         self.step_sapi_rate(-1)
@@ -584,13 +592,13 @@ class ControlSchemePanel:
         params = GameParameters.shared()
         params.set_sapi(boost=not params.sapi_config()['boost'])
         self.reload_data()
-        self._sapi_say('SAPI 5 rate boost %s' % ('ON' if params.sapi_config()['boost'] else 'OFF'))
+        self._sapi_say('%s rate boost %s' % (VOICE_NAME, 'ON' if params.sapi_config()['boost'] else 'OFF'))
 
     def step_sapi_pitch(self, step: int = 1) -> None:
         params = GameParameters.shared()
         params.set_sapi(pitch=max(-10, min(10, params.sapi_config()['pitch'] + step)))
         self.reload_data()
-        self._sapi_say('SAPI 5 pitch %d' % params.sapi_config()['pitch'])
+        self._sapi_say('%s pitch %d' % (VOICE_NAME, params.sapi_config()['pitch']))
 
     def step_sapi_pitch_back(self) -> None:
         self.step_sapi_pitch(-1)
@@ -600,7 +608,7 @@ class ControlSchemePanel:
         params = GameParameters.shared()
         params.set_sapi(volume=max(0, min(100, Speech.shared().sapi.volume() + 10 * step)))
         self.reload_data()
-        self._sapi_say('SAPI 5 volume %d%%' % Speech.shared().sapi.volume())
+        self._sapi_say('%s volume %d%%' % (VOICE_NAME, Speech.shared().sapi.volume()))
 
     def step_sapi_volume_back(self) -> None:
         self.step_sapi_volume(-1)
@@ -658,7 +666,7 @@ class ControlSchemePanel:
         padmap = self._pad_profile()
         if name in padmap.UNBINDABLE:
             why = ('Pushing a stick sideways turns' if name in ('stickleft', 'stickright')
-                   else '%s is kept by Windows' % padmap.name_of(name))
+                   else '%s is kept by %s' % (padmap.name_of(name), 'macOS' if system.MAC else 'Windows'))
             self.announce('%s. Press another button, or Escape to keep %s' % (why, padmap.text(action)))
             return
         replace = self.pad_capturing_replaces

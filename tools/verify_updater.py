@@ -14,6 +14,9 @@ are proved, in the order an update happens:
 The install folder is deliberately given a name with a space and a non-ASCII character in it, because
 that is the case a .cmd hand-off would get wrong and the reason this one is PowerShell.
 
+On the Mac the same checks run against the Mac's shape of a build - AudioDefence.app, with an executable
+and symbolic links inside it, zipped the way compiler.py zips it - and its shell-script hand-off.
+
 Run with no arguments; it exits non-zero on the first failure and says what did not hold.
 """
 from __future__ import annotations
@@ -25,6 +28,7 @@ import shutil
 import socketserver
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 import zipfile
@@ -32,7 +36,9 @@ import zipfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-WORK = os.path.join(os.environ.get('TEMP') or '.', 'audiodefence-updater-check')
+from audiodefence.platform import host as system          # noqa: E402
+
+WORK = os.path.join(os.environ.get('TEMP') or tempfile.gettempdir(), 'audiodefence-updater-check')
 failures: list = []
 
 
@@ -108,6 +114,54 @@ OLD, NEW = '26.09.20-1', '26.09.21-1'
 
 
 def build_trees():
+    return build_mac_trees() if system.MAC else build_windows_trees()
+
+
+#: what the plan has to fetch and remove, and how many files it leaves alone, for each platform's trees
+EXPECTED = {
+    'windows': (['AudioDefence.exe', 'VERSION', '_internal/fresh.pyd'], ['_internal/stale.pyd'], 3),
+    'mac': (['AudioDefence.app/Contents/Frameworks/fresh.so', 'AudioDefence.app/Contents/Frameworks/lib.dylib',
+             'AudioDefence.app/Contents/MacOS/AudioDefence', 'VERSION'],
+            ['AudioDefence.app/Contents/Frameworks/stale.so', 'AudioDefence.app/Contents/Resources/lib.dylib'], 6),
+}
+
+
+def build_mac_trees():
+    """The Mac's shape of a build: the app, holding an executable, a data folder and links into it."""
+    shutil.rmtree(WORK, ignore_errors=True)
+    install = os.path.join(WORK, 'Audio Defence لعبة')   # a space and non-ASCII
+    newbuild = os.path.join(WORK, 'new', 'AudioDefence')
+    audio = os.urandom(3 << 20)
+    for tree in (install, newbuild):
+        contents = os.path.join(tree, 'AudioDefence.app', 'Contents')
+        write(os.path.join(contents, 'Resources', 'game', 'sounds', 'voice.bank'), audio)
+        write(os.path.join(contents, 'Resources', 'game', 'enemies.plist'), b'<plist/>')
+        write(os.path.join(contents, 'Resources', 'base_library.zip'), b'zip' * 20000)
+        os.makedirs(os.path.join(contents, 'Frameworks'), exist_ok=True)
+        os.symlink('../Resources/game', os.path.join(contents, 'Frameworks', 'game'))       # to a folder
+        os.symlink('../Resources/base_library.zip', os.path.join(contents, 'Frameworks', 'base_library.zip'))
+        write(os.path.join(tree, 'readme.html'), b'<p>read me</p>')
+    old_contents = os.path.join(install, 'AudioDefence.app', 'Contents')
+    new_contents = os.path.join(newbuild, 'AudioDefence.app', 'Contents')
+    write(os.path.join(old_contents, 'MacOS', 'AudioDefence'), b'the build the player has')
+    write(os.path.join(old_contents, 'Frameworks', 'stale.so'), b'a file the new build drops')
+    write(os.path.join(old_contents, 'Resources', 'lib.dylib'), b'the library, where it used to be')
+    os.symlink('../Resources/lib.dylib', os.path.join(old_contents, 'Frameworks', 'lib.dylib'))
+    write(os.path.join(install, 'VERSION'), OLD + '\n')
+    write(os.path.join(new_contents, 'MacOS', 'AudioDefence'), b'the build on GitHub, which differs')
+    os.chmod(os.path.join(new_contents, 'MacOS', 'AudioDefence'), 0o755)
+    write(os.path.join(new_contents, 'Frameworks', 'fresh.so'), b'a file the new build adds')
+    write(os.path.join(new_contents, 'Frameworks', 'lib.dylib'), b'the library, a file now and not a link')
+    write(os.path.join(newbuild, 'VERSION'), NEW + '\n')
+
+    import compiler
+    archive = os.path.join(WORK, 'serve', system.archive_name(NEW, 'Mac'))
+    os.makedirs(os.path.dirname(archive), exist_ok=True)
+    compiler.write_zip(newbuild, archive, 'AudioDefence')
+    return install, newbuild, archive
+
+
+def build_windows_trees():
     shutil.rmtree(WORK, ignore_errors=True)
     install = os.path.join(WORK, 'Audio Defence لعبة')   # a space and non-ASCII
     newbuild = os.path.join(WORK, 'new', 'AudioDefence')
@@ -123,7 +177,7 @@ def build_trees():
     write(os.path.join(newbuild, 'VERSION'), NEW + '\n')
     write(os.path.join(newbuild, '_internal', 'fresh.pyd'), b'a file the new build adds')
 
-    archive = os.path.join(WORK, 'serve', 'AudioDefence-Win-%s.zip' % NEW)
+    archive = os.path.join(WORK, 'serve', system.archive_name(NEW, 'Win'))
     os.makedirs(os.path.dirname(archive), exist_ok=True)
     top = os.path.dirname(newbuild)
     with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as zf:
@@ -171,14 +225,21 @@ def main() -> int:
     install, newbuild, archive = build_trees()
     server, base = start_server(os.path.dirname(archive))
     zip_url = '%s/%s' % (base, os.path.basename(archive))
+    # the other platform's zip is on the release too, and each build must take its own.  GitHub's API lists
+    # a release's assets by name, ignoring case, whatever order they were uploaded in, so they are listed
+    # here the same way
+    decoy = system.archive_name(NEW, 'Win' if system.MAC else 'Mac')
+    assets = [{'name': decoy, 'browser_download_url': base + '/nothing-here.zip', 'size': 1},
+              {'name': os.path.basename(archive), 'browser_download_url': zip_url, 'size': os.path.getsize(archive)}]
+    assets.sort(key=lambda asset: asset['name'].lower())
     RangeHandler.api_body = json.dumps({
         'tag_name': NEW, 'name': 'Test release', 'body': 'A change worth downloading.',
-        'assets': [{'name': os.path.basename(archive), 'browser_download_url': zip_url,
-                    'size': os.path.getsize(archive)}]}).encode()
+        'assets': assets}).encode()
 
     from audiodefence import paths
     paths.FROZEN = True
     paths.EXE_DIR = install
+    paths.APP_BUNDLE = os.path.join(install, 'AudioDefence.app')
     paths.user_dir = lambda: WORK
     from audiodefence.platform import updater, version
 
@@ -212,13 +273,23 @@ def main() -> int:
     print()
     print('1. the plan downloads only what changed')
     release = updater.Release(json.loads(RangeHandler.api_body))
+    check(release.asset_name == os.path.basename(archive), "this platform's own zip is the one taken")
+    backwards = dict(json.loads(RangeHandler.api_body), assets=assets[::-1])
+    check(updater.Release(backwards).asset_name == os.path.basename(archive),
+          'and still is when the zips are listed the other way round')
+    # a Windows build from before the Mac port takes the first zip on the release, whatever it is called
+    first = next(asset['name'] for asset in assets if asset['name'].lower().endswith('.zip'))
+    check(first == system.archive_name(NEW, 'Win'),
+          'the Windows zip is listed first, so a build from before the Mac port takes it too')
     plan = updater.build_plan(release)
     wanted = sorted(relative for relative, _entry in plan.fetch)
+    fetch, remove, unchanged = EXPECTED['mac' if system.MAC else 'windows']
     check(plan.fetch is not None, 'the archive index was read over HTTP, not downloaded')
-    check(wanted == ['AudioDefence.exe', 'VERSION', '_internal/fresh.pyd'],
-          'exactly the changed files are fetched')
-    check(plan.remove == ['_internal/stale.pyd'], 'the file the new build drops is removed')
-    check(plan.unchanged == 3, 'the three unchanged files are left alone')
+    check(wanted == fetch, 'exactly the changed files are fetched')
+    check(sorted(plan.remove) == remove, 'the file the new build drops is removed')
+    if sorted(plan.remove) != remove or plan.unchanged != unchanged:
+        print('     removes %s; leaves %d alone' % (sorted(plan.remove), plan.unchanged))
+    check(plan.unchanged == unchanged, 'the %d unchanged files are left alone' % unchanged)
     check(plan.download_size < archive_size / 100,
           'under one per cent of %s is downloaded' % updater.size_text(archive_size))
     print('     %s instead of %s' % (updater.size_text(plan.download_size),
@@ -313,8 +384,17 @@ def main() -> int:
     if staging is None:
         return report()
     marker = os.path.join(WORK, 'relaunched.txt')
-    fake_exe = os.path.join(install, 'relaunch.cmd')
-    write(fake_exe, '@echo restarted> "%s"\r\n' % marker)
+    if system.MAC:
+        # the hand-off opens the app with `open`; here it runs a stand-in that says it was started
+        fake_exe = os.path.join(WORK, 'relaunch.sh')
+        write(fake_exe, '#!/bin/bash\necho restarted > "%s"\n' % marker)
+        os.chmod(fake_exe, 0o755)
+        real_script, real_target = updater.SH_SCRIPT, updater.restart_target
+        updater.SH_SCRIPT = updater.SH_SCRIPT.replace('open "$app"', '"$app"')
+        updater.restart_target = lambda: fake_exe
+    else:
+        fake_exe = os.path.join(install, 'relaunch.cmd')
+        write(fake_exe, '@echo restarted> "%s"\r\n' % marker)
     holder = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(5)'])
 
     # Go through updater.apply() itself rather than building the hand-off here.  An earlier version of
@@ -328,6 +408,8 @@ def main() -> int:
         updater.apply(staging, removals)
     finally:
         os.getpid, sys.executable = real_getpid, real_executable
+        if system.MAC:
+            updater.SH_SCRIPT, updater.restart_target = real_script, real_target
 
     time.sleep(1.5)
     mid = open(os.path.join(install, 'VERSION'), encoding='utf-8').read().strip()
@@ -341,22 +423,30 @@ def main() -> int:
     now = open(os.path.join(install, 'VERSION'), encoding='utf-8').read().strip()
     check(now == NEW, 'the version is the new one afterwards')
     baked.VERSION = now                                   # the swapped-in build knows what it is
-    check(os.path.isfile(os.path.join(install, '_internal', 'fresh.pyd')), 'the added file is there')
-    check(not os.path.isfile(os.path.join(install, '_internal', 'stale.pyd')), 'the dropped file is gone')
+    fetch, remove, _unchanged = EXPECTED['mac' if system.MAC else 'windows']
+    added = next(relative for relative in fetch if 'fresh' in relative)
+    check(os.path.isfile(os.path.join(install, added)), 'the added file is there')
+    check(not any(os.path.lexists(os.path.join(install, relative)) for relative in remove),
+          'the dropped files are gone')
     check(os.path.isfile(marker), 'the game is started again')
     if os.path.isdir(staging):
         updater.clean_up_staging()                        # applied now, so the sweep may have it
     check(not os.path.isdir(staging), 'the staging folder is cleared away')
 
     problems = []
-    for dirpath, _dirs, files in os.walk(newbuild):
-        for name in files:
+    for dirpath, dirs, files in os.walk(newbuild):
+        for name in files + [d for d in dirs if os.path.islink(os.path.join(dirpath, d))]:
             relative = os.path.relpath(os.path.join(dirpath, name), newbuild)
-            here = os.path.join(install, relative)
-            if not os.path.isfile(here):
+            here, there = os.path.join(install, relative), os.path.join(newbuild, relative)
+            if os.path.islink(there):
+                if not os.path.islink(here) or os.readlink(here) != os.readlink(there):
+                    problems.append('not the same link: ' + relative)
+            elif not os.path.isfile(here) or os.path.islink(here):
                 problems.append('missing: ' + relative)
-            elif open(here, 'rb').read() != open(os.path.join(newbuild, relative), 'rb').read():
+            elif open(here, 'rb').read() != open(there, 'rb').read():
                 problems.append('differs: ' + relative)
+            elif os.stat(there).st_mode & 0o111 and not os.stat(here).st_mode & 0o111:
+                problems.append('not executable: ' + relative)
     check(not problems, 'the install now matches the new build file for file')
     for problem in problems:
         print('       ' + problem)

@@ -29,6 +29,7 @@ import logging
 
 import pygame
 
+from ..platform import host as system
 from ..s3d.engine import S3DEngine
 from .screens import Screen, menu_music_volume_key
 
@@ -157,6 +158,11 @@ class View:
         return True
 
 
+#: PORT ADDITION: the modifier that turns a step into a jump to the first or last: Control, and on the Mac
+#: Command as well, since Command with an arrow is how a Mac goes to the start or the end of anything
+JUMP_MODS = pygame.KMOD_CTRL | (pygame.KMOD_GUI if system.MAC else 0)
+
+
 def navigation_key(event) -> str | None:
     """PORT ADDITION: VoiceOver is driven by swipes, so the keys that move its cursor are the port's own.
 
@@ -167,7 +173,7 @@ def navigation_key(event) -> str | None:
     k = event.key
     if k == pygame.K_TAB:
         shift = bool(event.mod & pygame.KMOD_SHIFT)
-        if event.mod & pygame.KMOD_CTRL:                 # an end, wherever the cursor is
+        if event.mod & JUMP_MODS:                        # an end, wherever the cursor is
             return 'first' if shift else 'last'
         return 'previous' if shift else 'next'
     if k == pygame.K_HOME:
@@ -176,7 +182,7 @@ def navigation_key(event) -> str | None:
         return 'last'
     vertical = GameParameters.shared().menu_axis() == 'vertical'
     forward, back = (pygame.K_DOWN, pygame.K_UP) if vertical else (pygame.K_RIGHT, pygame.K_LEFT)
-    ctrl = bool(event.mod & pygame.KMOD_CTRL)
+    ctrl = bool(event.mod & JUMP_MODS)
     if k == forward:
         return 'last' if ctrl else 'next'
     if k == back:
@@ -192,7 +198,7 @@ def cross_axis_key(event) -> str | None:
     jumps to the first or last tab the way Control with the other pair jumps to the first or last element.
     Tab is not part of this - it belongs to the elements, whichever way round the arrows are."""
     from ..game.parameters import GameParameters
-    ctrl = bool(event.mod & pygame.KMOD_CTRL)
+    ctrl = bool(event.mod & JUMP_MODS)
     shift = bool(event.mod & pygame.KMOD_SHIFT)
     if shift or event.mod & pygame.KMOD_ALT:
         return None

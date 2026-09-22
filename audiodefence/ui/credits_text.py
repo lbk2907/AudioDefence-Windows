@@ -13,10 +13,10 @@ STUDIO_TEXT = """Audio Defence: Zombie Arena
 by Somethin' Else
 """
 
-#: PORT ADDITION: who made the Windows port, in the shape the original's credits use - the role, then the
+#: PORT ADDITION: who made the Windows and Mac port, in the shape the original's credits use - the role, then the
 #: names under it.  It is a text view of its own, read after the original's, so nobody has to walk through
 #: the whole cast to reach it or past it.
-PORT_CREDITS_TEXT = """The Windows port
+PORT_CREDITS_TEXT = """The Windows and Mac port
 
 github.com/lbk2907/AudioDefence-Windows
 

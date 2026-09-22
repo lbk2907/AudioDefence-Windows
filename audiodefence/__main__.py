@@ -1,4 +1,4 @@
-"""Audio Defence for Windows.
+"""Audio Defence for Windows and the Mac.
 
 The game is started by ``py AudioDefence.py [options]``, which calls
 ``main()`` here; ``python -m audiodefence`` runs the same thing.

@@ -1,6 +1,6 @@
-"""Start Audio Defence (Windows port).
+"""Start Audio Defence (the Windows and Mac port).
 
-Double-click this file, or run:  py AudioDefence.py
+Double-click this file, or run:  py AudioDefence.py  (on the Mac:  uv run AudioDefence.py)
 Options such as --endless or --challenge tutorial_1 are passed through (see the README).
 """
 import os
@@ -31,10 +31,11 @@ def _report_failure(text: str) -> None:
     if sys.stdout is not None:
         print(text)
     try:
+        from audiodefence.platform import host
         from audiodefence.platform.speech import Speech
         Speech.shared().speak('Audio Defence could not start. The error is %s.'
                               % ('shown in the console window' if console else
-                                 'in crash.txt, in the AudioDefence folder in AppData' if path else
+                                 'in crash.txt, ' + host.user_dir_hint() if path else
                                  'not written down'))
     except Exception:
         pass

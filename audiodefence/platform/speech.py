@@ -1,5 +1,6 @@
 """Screen reader output: NVDA through its controller client; otherwise another screen reader through
-Prism (JAWS, ZoomText, System Access and the rest, and Narrator); otherwise SAPI 5.
+Prism (JAWS, ZoomText, System Access and the rest, and Narrator); otherwise SAPI 5.  On the Mac:
+VoiceOver, otherwise the system voice (platform/macspeech.py), which take NVDA's and SAPI 5's places here.
 
 This replaces VoiceOver's reading of labels and UIAccessibilityPostNotification announcements, and the port
 counts as a VoiceOver player whichever of them is speaking (Speech.screen_reader_running).
@@ -13,6 +14,7 @@ from ctypes import wintypes
 from xml.sax.saxutils import escape
 
 from .. import paths
+from . import host
 
 log = logging.getLogger('speech')
 
@@ -23,6 +25,13 @@ OUTPUTS = (('auto', 'Automatic'), ('nvda', 'NVDA'), ('jaws', 'JAWS'), ('zdsr', '
            ('zoomtext', 'ZoomText'), ('systemaccess', 'System Access'), ('windoweyes', 'Window-Eyes'),
            ('pctalker', 'PC-Talker'), ('boypcreader', 'Boy PC Reader'), ('sensereader', 'Sense Reader'),
            ('sapi', 'SAPI 5'))
+if host.MAC:
+    #: the Mac's: VoiceOver where Windows has NVDA, and the system voice under SAPI 5's key, 'sapi', since it
+    #: does SAPI 5's job and takes the same settings (Settings -> Speech's voice, rate, pitch and volume)
+    OUTPUTS = (('auto', 'Automatic'), ('voiceover', 'VoiceOver'), ('sapi', 'System voice'))
+#: the screen reader the game speaks to directly, and what the built-in voice is called
+SCREEN_READER = 'voiceover' if host.MAC else 'nvda'
+VOICE_NAME = dict(OUTPUTS)['sapi']
 #: the choices Prism speaks for, by Prism's own names for them
 PRISM_NAMES = {'jaws': 'JAWS', 'narrator': 'UIA', 'zoomtext': 'ZoomText', 'systemaccess': 'SystemAccess',
                'windoweyes': 'WindowEyes', 'pctalker': 'PCTalker', 'zdsr': 'ZDSR', 'boypcreader': 'BoyPCReader',
@@ -337,6 +346,21 @@ class _Sapi:
             self.voice.Speak('', self.SVSF_ASYNC | self.SVSF_PURGE)
 
 
+class _NoReaders:
+    """The Mac has no Prism: VoiceOver is spoken to directly, as NVDA is on Windows."""
+    ctx = None
+    reader = None
+
+    def current(self, only=None):
+        return None
+
+    def speak(self, text: str, interrupt: bool, only=None) -> bool:
+        return False
+
+    def stop(self) -> None:
+        pass
+
+
 class Speech:
     _shared: 'Speech | None' = None
 
@@ -347,7 +371,11 @@ class Speech:
         return cls._shared
 
     def __init__(self):
-        self.nvda = _Nvda()
+        if host.MAC:
+            from .macspeech import VoiceOver
+            self.nvda = VoiceOver()                       # the screen reader spoken to directly
+        else:
+            self.nvda = _Nvda()
         self._readers = None
         self._sapi = None
         self.choice = 'auto'                              # Speech output (OUTPUTS), set from the settings
@@ -357,13 +385,17 @@ class Speech:
     @property
     def readers(self) -> _Readers:
         if self._readers is None:
-            self._readers = _Readers()
+            self._readers = _NoReaders() if host.MAC else _Readers()
         return self._readers
 
     @property
     def sapi(self) -> _Sapi:
         if self._sapi is None:
-            self._sapi = _Sapi()
+            if host.MAC:
+                from .macspeech import SystemVoice
+                self._sapi = SystemVoice()
+            else:
+                self._sapi = _Sapi()
             self._sapi.configure(**self.sapi_config)
         return self._sapi
 
@@ -392,10 +424,10 @@ class Speech:
         text = str(text)
         log.debug('speak: %s', text)
         choice = self.choice
-        if choice not in PRISM_NAMES and choice not in ('nvda', 'sapi'):
+        if choice not in PRISM_NAMES and choice not in (SCREEN_READER, 'sapi'):
             self.speak_automatic(text, interrupt)
             return
-        if choice == 'nvda':
+        if choice == SCREEN_READER:
             spoken = self.nvda.speak(text, interrupt)
         elif choice == 'sapi':
             spoken = self.sapi.speak(text, interrupt)
@@ -417,10 +449,10 @@ class Speech:
         self.sapi.speak(text, interrupt)
 
     def automatic_output(self) -> str:
-        """What Automatic speaks through right now, without speaking: 'nvda', another screen reader's
-        Prism name, or 'sapi'."""
+        """What Automatic speaks through right now, without speaking: 'nvda' ('voiceover' on the Mac),
+        another screen reader's Prism name, or 'sapi'."""
         if self.nvda.running():
-            return 'nvda'
+            return SCREEN_READER
         reader = self.readers.current()
         return reader.name if reader is not None else 'sapi'
 
@@ -428,7 +460,7 @@ class Speech:
         """Whether this Speech output choice can speak right now."""
         if choice == 'auto':
             return True
-        if choice == 'nvda':
+        if choice == SCREEN_READER:
             return self.nvda.running()
         if choice == 'sapi':
             return self.sapi.voice is not None
@@ -436,7 +468,7 @@ class Speech:
 
     def stop(self) -> None:
         choice = self.choice
-        if choice == 'nvda':
+        if choice == SCREEN_READER:
             if self.nvda.running():
                 self.nvda.stop()
         elif choice == 'sapi':

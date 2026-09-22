@@ -24,3 +24,9 @@ desktop.ini
 
 # the page the build makes from README.md; a manual run of tools/md_to_html.py can land it here
 readme.html
+
+# macOS
+.DS_Store
+
+# Building OpenAL Soft for the Mac (tools/build_openal_mac.sh): the source and the build, never committed
+vendor/build-openal/

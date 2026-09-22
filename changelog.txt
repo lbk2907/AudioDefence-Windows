@@ -1,4 +1,5 @@
 unrelease:
+The game runs on the Mac too: AudioDefence.app, in its own zip on the same release, updating itself like the Windows build. It speaks through VoiceOver, or through the system voice when VoiceOver is off, and Settings -> Speech has the system voice's own voice, rate, pitch and volume. The README's "On the Mac" says how to open it the first time and how to let VoiceOver speak for it.
 
 26.09.22-2:
 You can turn with buttons on a game controller instead of a stick: the D-pad, left and right, to begin with. Settings, Joystick has them as Alternate turn left and Alternate turn right, and you can set them to any buttons you like. They turn at the same speed as the keyboard, and the sticks keep turning as they always did. When the tutorial names your controller, the aiming line names them too, by whatever you have set them to.

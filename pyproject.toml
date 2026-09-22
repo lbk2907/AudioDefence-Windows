@@ -1,0 +1,21 @@
+[project]
+name = "audiodefence-port"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "av>=14.0.0",
+    "numpy>=2.0.0",
+    "pygame-ce>=2.5.0",
+    # speech: NVDA's client is vendored; SAPI 5 through comtypes, the other screen readers through Prism
+    "comtypes>=1.4.0; sys_platform == 'win32'",
+    "prismatoid; sys_platform == 'win32'",
+    # speech on the Mac: VoiceOver and the system voice, through pyobjc
+    "pyobjc-framework-cocoa>=10.0; sys_platform == 'darwin'",
+]
+
+[dependency-groups]
+build = ["pyinstaller>=6.10"]
+tools = ["capstone>=5.0"]
+
+[tool.uv]
+default-groups = ["build"]

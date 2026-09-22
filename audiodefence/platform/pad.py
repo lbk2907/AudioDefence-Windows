@@ -32,10 +32,12 @@ import ctypes
 import logging
 import math
 import os
+import sys
 import time
 
 import pygame
 
+from . import host
 from .defaults import UserDefaults
 
 log = logging.getLogger('platform.pad')
@@ -335,18 +337,37 @@ class PadMap:
 
 # --- SDL itself, for what pygame does not wrap -----------------------------------------------------------
 # pygame opens the controllers; the motion sensors and the DualSense's trigger effects are reached through
-# the same SDL2.dll pygame loaded, by the controller's instance id, so both work on the one SDL object.
+# the same SDL2.dll pygame loaded, by the controller's instance id, so both work on the one SDL object.  On the
+# Mac it is libSDL2-2.0.0.dylib in pygame's .dylibs folder, or wherever PyInstaller put it in a build; opening
+# the file pygame already has open hands back the same library rather than a second SDL.
 SENSOR_ACCELEROMETER = 1                                  # SDL_SENSOR_ACCEL
 TYPE_PS5 = 7                                              # SDL_CONTROLLER_TYPE_PS5
 _sdl = None
 
 
+def _sdl_path() -> str:
+    """Where pygame's own SDL is: SDL2.dll beside pygame on Windows, libSDL2 in its .dylibs on the Mac."""
+    here = os.path.dirname(pygame.__file__)
+    if not host.MAC:
+        return os.path.join(here, 'SDL2.dll')
+    name = 'libSDL2-2.0.0.dylib'
+    roots = [os.path.join(here, '.dylibs'), here, getattr(sys, '_MEIPASS', '')]
+    for root in roots:
+        if root and os.path.isfile(os.path.join(root, name)):
+            return os.path.join(root, name)
+    for root in roots:                                    # PyInstaller may keep pygame/.dylibs under its root
+        candidate = os.path.join(root, 'pygame', '.dylibs', name)
+        if root and os.path.isfile(candidate):
+            return candidate
+    return name                                           # let the loader look
+
+
 def sdl():
-    """pygame's SDL2.dll, or None where it cannot be reached (then there is no shake and no trigger feel)."""
+    """pygame's SDL2, or None where it cannot be reached (then there is no shake and no trigger feel)."""
     global _sdl
     if _sdl is None:
         try:
-            lib = ctypes.CDLL(os.path.join(os.path.dirname(pygame.__file__), 'SDL2.dll'))
+            lib = ctypes.CDLL(_sdl_path())
             lib.SDL_GameControllerFromInstanceID.restype = ctypes.c_void_p
             lib.SDL_GameControllerFromInstanceID.argtypes = [ctypes.c_int32]
             lib.SDL_GameControllerGetType.argtypes = [ctypes.c_void_p]

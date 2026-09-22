@@ -15,6 +15,11 @@ build.  Every other choice is one of these flags, which still work typed out:
 A build makes one folder, dist\\AudioDefence, with the game's data copied in, and ends by zipping it into
 dist\\AudioDefence-Win-<VERSION>.zip, which is what a release's asset is and what the updater reads.
 
+On the Mac (uv run compiler.py) the same folder holds AudioDefence.app, with the game's data inside the app
+rather than beside it, and the zip is dist/AudioDefenceMac-<VERSION>.zip.  Both zips go on the same release;
+each build's updater takes its own.  The Mac's name has no dash so that it sorts after the Windows zip's
+(see ARCHIVE_PREFIXES in audiodefence/platform/host.py).
+
 The release build - no flags at all - also files the changelog first: the lines under "unrelease:" go
 under this version's heading in the repository's changelog.txt, and the copy beside the executable opens
 on that version.  Every build ends by saying whether there is anything to commit.  Run with no flags and no
@@ -37,6 +42,8 @@ import tempfile
 import time
 import zipfile
 
+from audiodefence.platform import host
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 NAME = 'AudioDefence'
 ENTRY = 'AudioDefence.py'
@@ -46,6 +53,17 @@ PLAY_PACKAGES = (('pygame', 'pygame-ce'), ('numpy', 'numpy'), ('av', 'av'), ('co
 DATA = (('assets/hrtf', 'assets/hrtf'),)                        # the game's own HRTF
 BINARIES = (('vendor/openal/soft_oal.dll', 'vendor/openal'),    # the audio engine itself
             ('vendor/nvda/nvdaControllerClient64.dll', 'vendor/nvda'))
+if host.MAC:
+    # the same OpenAL Soft, built for the Mac by tools/build_openal_mac.sh; speech is VoiceOver and the system
+    # voice, through pyobjc, so there is no screen reader's library to carry
+    PLAY_PACKAGES = (('pygame', 'pygame-ce'), ('numpy', 'numpy'), ('av', 'av'),
+                     ('AppKit', 'pyobjc-framework-cocoa'))
+    BINARIES = (('vendor/openal-mac/libopenal.dylib', 'vendor/openal-mac'),)
+#: the Mac app's identity, which LaunchServices and Spotlight key on; PyInstaller's own is the bare name
+BUNDLE_ID = 'com.audiodefence.port'
+#: files of the original bundle a Mac build leaves out of the copy inside its app: the iOS executable and
+#: its signature, which would make codesign take the game's data for code of the app's own
+MAC_GAME_SKIPS = ('audiodefence', '_CodeSignature', 'archived-expanded-entitlements.xcent')
 #: copied beside the executable rather than bundled inside it, so the player can open them: what it is
 #: called here, and what it is called there.  LICENSE has no extension, which is the convention on GitHub
 #: but means Windows asks what to open it with, so it ships as a .txt.
@@ -80,25 +98,45 @@ def package(dest_root: str) -> str:
     gives a player a folder rather than a heap of files in their Downloads.
     """
     version = build_version()
-    name = '%s-Win-%s' % (NAME, version) if version else '%s-Win' % NAME
-    archive = os.path.join(HERE, 'dist', name + '.zip')
+    archive = os.path.join(HERE, 'dist', host.archive_name(version))
     if os.path.isfile(archive):
         os.remove(archive)
     say()
     say('packing %s ...' % os.path.basename(archive))
     started = time.perf_counter()
-    count = 0
-    with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED, compresslevel=6) as zf:
-        for dirpath, _dirs, files in os.walk(dest_root):
-            for filename in sorted(files):
-                full = os.path.join(dirpath, filename)
-                inside = os.path.join(NAME, os.path.relpath(full, dest_root))
-                zf.write(full, inside.replace(os.sep, '/'))
-                count += 1
+    count = write_zip(dest_root, archive, NAME)
     say('  %d files, %.0f MB, in %.0f seconds.'
         % (count, os.path.getsize(archive) / (1 << 20), time.perf_counter() - started))
-    say('upload this as the release asset, and tag the release %s.' % (version or 'with its version'))
+    if host.MAC:
+        say('upload this to the release tagged %s, beside the Windows zip.' % (version or 'with its version'))
+    else:
+        say('upload this as the release asset, and tag the release %s.' % (version or 'with its version'))
     return archive
+
+
+def write_zip(dest_root: str, archive: str, top: str) -> int:
+    """Zip `dest_root` into `archive`, under one folder called `top`, and return how many members it has.
+
+    An app's symbolic links go in as links, the way Finder's Archive Utility and ditto store and restore
+    them, and each file's mode goes with it, execute bit and all; a link to a folder is not walked into, or
+    its files would go in twice.  tools/verify_updater.py makes its pretend releases with this too."""
+    count = 0
+    with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED, compresslevel=6) as zf:
+        for dirpath, dirs, files in os.walk(dest_root):
+            links = sorted(d for d in dirs if os.path.islink(os.path.join(dirpath, d)))
+            dirs[:] = sorted(d for d in dirs if d not in links)
+            for filename in sorted(files) + links:
+                full = os.path.join(dirpath, filename)
+                inside = os.path.join(top, os.path.relpath(full, dest_root)).replace(os.sep, '/')
+                if os.path.islink(full):
+                    info = zipfile.ZipInfo(inside, time.localtime(os.lstat(full).st_mtime)[:6])
+                    info.create_system = 3                # unix, so the mode below is read
+                    info.external_attr = (os.lstat(full).st_mode & 0xFFFF) << 16
+                    zf.writestr(info, os.readlink(full), zipfile.ZIP_STORED)
+                else:
+                    zf.write(full, inside)
+                count += 1
+    return count
 
 
 # --- the changelog -----------------------------------------------------------------------------------
@@ -240,23 +278,26 @@ def release_warnings(changelog: str) -> list:
 def problems_now() -> list[str]:
     """Everything that would stop the build, in plain words."""
     found = []
-    if sys.platform != 'win32':
-        found.append('this builds a Windows executable, so it has to run on Windows')
+    if not (host.WINDOWS or host.MAC):
+        found.append('this builds the Windows or the Mac game, so it has to run on one of them')
     if sys.maxsize <= 2 ** 32:
         found.append('use 64-bit Python: the vendored OpenAL Soft and NVDA DLLs are 64-bit')
+    install = 'uv sync' if host.MAC else 'pip install'
     if importlib.util.find_spec('PyInstaller') is None:
-        found.append('PyInstaller is not installed in this Python: pip install pyinstaller')
+        found.append('PyInstaller is not installed in this Python: %s'
+                     % ('uv sync, then build with uv run compiler.py' if host.MAC else 'pip install pyinstaller'))
     absent = [pip for mod, pip in PLAY_PACKAGES if importlib.util.find_spec(mod) is None]
     if absent:
         found.append("the game's own packages have to be installed here too, to be bundled: "
-                     'pip install ' + ' '.join(absent))
+                     + (install if host.MAC else install + ' ' + ' '.join(absent)))
     for src, _ in DATA:
         path = os.path.join(HERE, src.replace('/', os.sep))
         if not os.path.isdir(path) or not os.listdir(path):
             found.append('%s is empty - rebuild the HRTF with: py tools/build_hrtf.py' % src)
     for src, _ in BINARIES:
         if not os.path.isfile(os.path.join(HERE, src.replace('/', os.sep))):
-            found.append('%s is missing - it ships with the repository' % src)
+            found.append('%s is missing - it ships with the repository%s'
+                         % (src, ', or build it with tools/build_openal_mac.sh' if host.MAC else ''))
     return found
 
 
@@ -297,16 +338,22 @@ def command(args, baked_folder: str) -> list[str]:
         cmd += ['--add-binary', src + os.pathsep + dest]
     # nothing imports the version module by name, so it is named outright, and found in its own folder
     cmd += ['--paths', baked_folder, '--hidden-import', baked_module()]
-    # these are imported only when first needed, so name them outright rather than hope the analysis finds
-    # them.  Prism loads its compiled half from a folder of its own, prism/_native: --collect-all brings
-    # the DLL there but not the Python module beside it (the folder is not a package), so that is added by
-    # name, and it needs cffi's own compiled module, which nothing names either
-    cmd += ['--collect-all', 'av', '--collect-submodules', 'comtypes',
-            '--collect-all', 'prism', '--hidden-import', '_cffi_backend']
-    for src in prism_native_modules():
-        cmd += ['--add-binary', src + os.pathsep + 'prism/_native']
+    cmd += ['--collect-all', 'av']
+    if host.MAC:
+        # the speech modules import AppKit and Foundation only once they are first asked to speak
+        cmd += ['--hidden-import', 'AppKit', '--hidden-import', 'Foundation',
+                '--hidden-import', 'audiodefence.platform.macspeech', '--osx-bundle-identifier', BUNDLE_ID]
+    else:
+        # these are imported only when first needed, so name them outright rather than hope the analysis
+        # finds them.  Prism loads its compiled half from a folder of its own, prism/_native: --collect-all
+        # brings the DLL there but not the Python module beside it (the folder is not a package), so that is
+        # added by name, and it needs cffi's own compiled module, which nothing names either
+        cmd += ['--collect-submodules', 'comtypes', '--collect-all', 'prism', '--hidden-import', '_cffi_backend']
+        for src in prism_native_modules():
+            cmd += ['--add-binary', src + os.pathsep + 'prism/_native']
     if not args.console:
-        # no console window beside the game's own; a failed start-up writes crash.txt and says so instead
+        # no console window beside the game's own; a failed start-up writes crash.txt and says so instead.
+        # On the Mac this is also what makes an .app of it
         cmd += ['--windowed']
     if args.onefile:
         cmd += ['--onefile']
@@ -320,16 +367,76 @@ def output_dir(args) -> str:
     return os.path.join(HERE, 'dist') if args.onefile else os.path.join(HERE, 'dist', NAME)
 
 
-def copy_game(dest_root: str) -> bool:
+def executable(dest_root: str, args) -> str:
+    """The program a build makes: AudioDefence.exe, or the Mac app's own executable inside it."""
+    if host.MAC:
+        if args.console:                                  # no .app: a plain program in the folder
+            return os.path.join(dest_root, NAME)
+        return os.path.join(app_bundle(dest_root), 'Contents', 'MacOS', NAME)
+    return os.path.join(dest_root, NAME + '.exe')
+
+
+def arrange_mac_app(dest_root: str) -> None:
+    """PyInstaller leaves the app beside the folder it was made from, dist/AudioDefence.app next to
+    dist/AudioDefence; the app is the whole game, so the folder is replaced by one holding just the app,
+    which the game's data, the side files and the zip then go around as they do on Windows."""
+    made = os.path.join(HERE, 'dist', NAME + '.app')
+    shutil.rmtree(dest_root, ignore_errors=True)
+    os.makedirs(dest_root)
+    shutil.move(made, app_bundle(dest_root))
+
+
+def finish_mac_app(dest_root: str, version: str) -> bool:
+    """Give the app the version it was built from, and sign it again now that the game's data is inside.
+
+    PyInstaller writes 0.0.0 into the app's Info.plist and signs the app before the game's data goes in, so
+    the signature no longer matches what the app holds.  It is signed again, ad hoc - no certificate, the
+    same as PyInstaller's own - which is what Apple silicon needs to run it at all."""
+    import plistlib
+    app = app_bundle(dest_root)
+    info = os.path.join(app, 'Contents', 'Info.plist')
+    with open(info, 'rb') as fh:
+        plist = plistlib.load(fh)
+    plist['CFBundleIdentifier'] = BUNDLE_ID
+    plist['CFBundleDisplayName'] = 'Audio Defence'
+    plist['CFBundleShortVersionString'] = plist['CFBundleVersion'] = version or '0.0.0'
+    plist['NSHighResolutionCapable'] = True
+    # macOS asks the player once whether the game may speak through VoiceOver; this is what it says why
+    plist['NSAppleEventsUsageDescription'] = 'Audio Defence speaks through VoiceOver.'
+    with open(info, 'wb') as fh:
+        plistlib.dump(plist, fh)
+    say('signing %s ...' % os.path.basename(app))
+    run = subprocess.run(['codesign', '--force', '--deep', '--sign', '-', app], capture_output=True, text=True)
+    if run.returncode != 0:
+        say('  codesign failed: %s' % (run.stderr.strip() or run.stdout.strip()))
+        return False
+    return True
+
+
+def app_bundle(dest_root: str) -> str:
+    """The Mac build's app, in the folder that is handed over."""
+    return os.path.join(dest_root, NAME + '.app')
+
+
+def game_dest(dest_root: str, app: bool = host.MAC) -> str:
+    """Where the game's data goes: beside the executable on Windows, inside the app on the Mac (beside the
+    executable there too, for a --console build, which makes no app)."""
+    if app:
+        return os.path.join(app_bundle(dest_root), 'Contents', 'Resources', 'game')
+    return os.path.join(dest_root, 'game')
+
+
+def copy_game(dest_root: str, app: bool = host.MAC) -> bool:
     from audiodefence import paths
     if not os.path.isdir(paths.BUNDLE):
         say("  the game's data is not in %s, so nothing was copied." % paths.BUNDLE)
         say('  the build will need --game PATH, or a game folder put beside the executable.')
         return False
-    dest = os.path.join(dest_root, 'game')
+    dest = game_dest(dest_root, app)
     say("copying the game's data into %s ..." % dest)
     started = time.perf_counter()
-    shutil.copytree(paths.BUNDLE, dest, dirs_exist_ok=True)
+    skip = shutil.ignore_patterns(*MAC_GAME_SKIPS) if app else None
+    shutil.copytree(paths.BUNDLE, dest, dirs_exist_ok=True, ignore=skip)
     say('  done in %.0f seconds.' % (time.perf_counter() - started))
     return True
 
@@ -395,7 +502,10 @@ def test_build(exe: str) -> int:
     from audiodefence import paths
     log = os.path.join(paths.user_dir(), 'audiodefence.log')
     say('starting it for ten seconds ...')
-    run = subprocess.run([exe, '--exit-after', '10', '--log-level', 'info'], cwd=os.path.dirname(exe))
+    # on the Mac, the first line the game speaks makes macOS ask whether it may control VoiceOver, and the
+    # game waits for the answer: a check that nobody is there to answer runs without speech
+    quiet = ['--no-speech'] if host.MAC else []
+    run = subprocess.run([exe, '--exit-after', '10', '--log-level', 'info'] + quiet, cwd=os.path.dirname(exe))
     text = open(log, encoding='utf-8', errors='replace').read() if os.path.isfile(log) else ''
     return 0 if read_log(text, run.returncode, log) else 1
 
@@ -415,6 +525,10 @@ def main(argv=None) -> int:
     parser.add_argument('--dry-run', action='store_true', help='print what would be done, build nothing')
     args = parser.parse_args(argv)
     os.chdir(HERE)                                      # the paths above are relative to the project
+    if host.MAC and args.onefile:
+        say('--onefile is not offered on the Mac: a one-file app unpacks itself at every launch, which costs '
+            'tens of seconds there, and an .app is one thing to double-click already.')
+        return 2
     # a plain build is a release: only then is the changelog filed under the version
     flagged = any((args.onefile, args.no_game, args.console, args.clean, args.test, args.no_package))
     plain = not flagged and not args.dry_run
@@ -441,7 +555,7 @@ def main(argv=None) -> int:
             say("the game's data would not be copied.")
         else:
             say("the game's data would then be copied into %s"
-                % os.path.join(output_dir(args), 'game'))
+                % game_dest(output_dir(args), host.MAC and not args.console))
         for name, shipped_as in SIDE_FILES:
             say('%s would be copied beside the executable%s%s'
                 % (name, '' if shipped_as == name else ', as %s' % shipped_as,
@@ -467,7 +581,7 @@ def main(argv=None) -> int:
         if args.no_package:
             say('it would not be zipped, because of --no-package.')
         else:
-            say('it would then be packed into dist%s%s-Win-%s.zip' % (os.sep, NAME, zip_version))
+            say('it would then be packed into dist%s%s' % (os.sep, host.archive_name(zip_version)))
         if flagged:
             for warning in release_warnings(os.path.join(HERE, 'changelog.txt')):
                 say('before releasing: ' + warning)
@@ -484,20 +598,25 @@ def main(argv=None) -> int:
     say('built in %.0f seconds.' % (time.perf_counter() - started))
 
     dest_root = output_dir(args)
+    app = host.MAC and not args.console
+    if app:
+        arrange_mac_app(dest_root)
     if not args.no_game:
-        copy_game(dest_root)
+        copy_game(dest_root, app)
     # only once PyInstaller has succeeded: a failed build must not leave the repository changed
     changed = prepare_release_files(baked) if plain else []
     copy_side_files(dest_root)
     if plain:
         strip_shipped_changelog(dest_root)
+    if app and not finish_mac_app(dest_root, baked):
+        return 1
 
     if not args.no_package:
         for warning in release_warnings(os.path.join(dest_root, 'changelog.txt')):
             say('before releasing: ' + warning)
         package(dest_root)
 
-    exe = os.path.join(dest_root, NAME + '.exe')
+    exe = executable(dest_root, args)
     say()
     say('the game is %s' % exe)
     say("the folder around it is what you hand over, and the game's own files in it are Somethin' Else's.")
@@ -531,6 +650,8 @@ MENU = (
     ("Build without the game's data", ['--no-game']),
     ('Show what a release build would do, without building anything', ['--dry-run']),
 )
+if host.MAC:                                            # not offered there: see main()
+    MENU = tuple(choice for choice in MENU if '--onefile' not in choice[1])
 
 
 def menu() -> list | None:

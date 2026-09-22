@@ -1,6 +1,7 @@
-# Audio Defence — Windows port
+# Audio Defence — Windows and Mac port
 
-A port of *Audio Defence: Zombie Arena* (Somethin' Else, iOS, 2015) to Windows:
+A port of *Audio Defence: Zombie Arena* (Somethin' Else, iOS, 2015) to Windows
+and the Mac:
 the audio-only shooter you play by listening, turning towards a zombie you can
 hear and firing before it reaches you. Endless mode, the challenge worlds, the
 armory, the tarot cards, the Zombiepedia — and the whole of it through a screen
@@ -9,7 +10,7 @@ reader, because that is how the original was meant to be played.
 The original was pulled from the App Store years ago and never came to anything
 else. It needs a phone you may no longer own, running an OS that will not
 install it. This port exists so it can be played on a desktop, with a keyboard
-and NVDA, by people who cannot see the screen and never needed to.
+and NVDA or VoiceOver, by people who cannot see the screen and never needed to.
 
 It is playable from the logo to the last challenge. If you find something that
 sounds wrong, say so — most of what is fixed in here was found by someone
@@ -52,6 +53,11 @@ come and go by themselves as a screen reader starts or closes:
 Enter and Shift+Enter change each one, and each change is said in SAPI 5 at the
 new setting, even while NVDA speaks the rest, so you hear what you chose. Reset
 all settings puts all five back to Control Panel's.
+
+On the Mac the same page lists **Automatic**, **VoiceOver** and **System
+voice**: VoiceOver when it is on, the system voice when it is not, and the
+system voice's own five rows — voice, rate, pitch and volume, with no rate
+boost — in place of SAPI 5's. See [On the Mac](#on-the-mac).
 
 Every screen the original offered a VoiceOver user is here, read in the
 order VoiceOver read it, with the same labels and hints, and a good number of
@@ -118,6 +124,10 @@ You only have to do that once. From then on the game tells you when a new
 version is out and installs it for you, downloading only the files that
 changed — see [Updates](#updates) below.
 
+**On the Mac** it is the same folder with `AudioDefence.app` in it instead, in
+`AudioDefenceMac-<version>.zip` on the same release — see
+[On the Mac](#on-the-mac).
+
 **From source** is everything below: the repository as it stands, run with the
 Python you have. That is the one to take if you want to read the code, change
 it, or build the executable yourself.
@@ -182,7 +192,8 @@ can be double-clicked, and it takes the options below:
     py AudioDefence.py --challenge tutorial_1
     py AudioDefence.py --help
 
-Settings, saves and the log live in `%APPDATA%\AudioDefence`, in three files:
+Settings, saves and the log live in `%APPDATA%\AudioDefence` (on the Mac,
+`~/Library/Application Support/AudioDefence`), in three files:
 
 | file | what is in it |
 |---|---|
@@ -192,6 +203,99 @@ Settings, saves and the log live in `%APPDATA%\AudioDefence`, in three files:
 
 Deleting the folder starts a fresh profile — the first run then begins on Gyro
 with the default key bindings.
+
+## On the Mac
+
+The Mac build is the same port — the same engine, the same game data, the same
+OpenAL Soft and the game's own HRTF — with the Mac's own speech, folders and
+app. Nothing in the game itself asks which it is on:
+`audiodefence/platform/host.py` holds every choice that differs.
+
+| | Windows | Mac |
+|---|---|---|
+| the game | `AudioDefence.exe`, with `game/` beside it | `AudioDefence.app`, with the game's data inside it |
+| speech | NVDA, the other screen readers through Prism, SAPI 5 | VoiceOver, then the system voice |
+| settings, saves, log | `%APPDATA%\AudioDefence` | `~/Library/Application Support/AudioDefence` |
+| OpenAL Soft | `vendor/openal/soft_oal.dll` | `vendor/openal-mac/libopenal.dylib` |
+| release zip | `AudioDefence-Win-<version>.zip` | `AudioDefenceMac-<version>.zip` |
+| leaving the game | Alt+F4, or Quit | Cmd+Q, or Quit |
+
+### Playing the built game
+
+Unzip `AudioDefenceMac-<version>.zip` and move the `AudioDefence` folder
+somewhere of your own — your Applications folder will do — then open
+`AudioDefence.app` in it. The app is not signed with an Apple developer
+certificate, so the first time macOS refuses to open it: open **System
+Settings → Privacy & Security**, and choose **Open Anyway** for AudioDefence
+near the bottom. You only do that once. It runs on Apple silicon Macs.
+
+Move the folder before you first open the game. An app opened where it was
+downloaded is run by macOS from a temporary copy, and from there it cannot
+update itself; it tells you so if you ask it to.
+
+### VoiceOver
+
+With VoiceOver on, the game speaks through it, in your own voice and at your
+own rate, and a braille display shows the same lines. It speaks to VoiceOver
+by AppleScript, which VoiceOver allows only when asked to: in **VoiceOver
+Utility → General**, tick **Allow VoiceOver to be controlled with
+AppleScript**. The first time the game speaks, macOS asks whether
+AudioDefence may control VoiceOver — say OK. Until both are done the game
+still speaks, as announcements VoiceOver reads while the game's window has
+focus, but they can be cut short by VoiceOver's own speech.
+
+VoiceOver's Quick Nav takes the arrow keys for itself, and the game needs
+them: if the arrows seem to do nothing, press Left and Right arrow together to
+turn Quick Nav off.
+
+With VoiceOver off, the game speaks with the system voice — the one set in
+**System Settings → Accessibility → Spoken Content** — and Settings → Speech
+lists its voice, rate, pitch and volume, as it lists SAPI 5's on Windows.
+
+In the menus Command works as Control does with the arrows: Command with the
+menu's arrows goes to the first or last element, and with the other pair to
+the first or last tab.
+
+### Running from source
+
+The Mac uses [uv](https://docs.astral.sh/uv/) for Python and the packages,
+which the repository's `pyproject.toml` and `uv.lock` pin:
+
+    brew install uv
+    uv run AudioDefence.py
+
+`uv run` makes `.venv` with the right Python and packages the first time; the
+options are the same as on Windows. `pygame-ce`, `numpy` and `av` are the same
+three, `pyobjc-framework-cocoa` takes the place of `comtypes` and
+`prismatoid` for speech, and PyInstaller comes with them for building.
+`AudioDefence.command` can be double-clicked in Finder to do the same.
+
+### Building the app
+
+    uv run compiler.py
+
+or double-click `compiler.command`. It is the same compiler with the same
+menu and flags, less the one-file build, which on a Mac would unpack itself
+on every launch. It leaves `dist/AudioDefence` holding `AudioDefence.app`,
+readme.html, changelog.txt and license.txt, and zips it into
+`dist/AudioDefenceMac-<version>.zip`, keeping the app's links and execute
+bits so Finder unzips a working app. The game's data goes inside the app, at
+`Contents/Resources/game`, less the original's iOS executable and its code
+signature, and the app is signed again, ad hoc, once it is complete.
+
+Put the Mac zip on the same release as the Windows one, in either order. Each
+build's updater takes the zip made for it, by its name. Keep the names exactly
+as the compiler makes them. GitHub lists a release's files alphabetically,
+not in the order they were uploaded, and a Windows build from before the Mac
+port takes the first zip it finds. `AudioDefence-Win-` sorts before
+`AudioDefenceMac-` because a dash comes before any letter. A Mac zip called
+`AudioDefence-Mac-` would come first, and those older Windows builds would
+install it over themselves.
+
+`vendor/openal-mac/libopenal.dylib` is OpenAL Soft 1.25.2 built for arm64,
+the same version as the Windows DLL. `tools/build_openal_mac.sh` rebuilds it
+from source (it needs cmake and the Xcode command line tools), for an Intel
+Mac with `--arch x86_64`.
 
 ## Controls
 
@@ -435,8 +539,9 @@ change your mind.
 
 Say yes and it downloads, then offers to restart. It has to close to put the
 new files in place and starts itself again afterwards. **Your progress is never
-at risk**: saves, settings and key bindings live in `%APPDATA%\AudioDefence`,
-and an update only ever replaces the game's own program files.
+at risk**: saves, settings and key bindings live in `%APPDATA%\AudioDefence`
+(`~/Library/Application Support/AudioDefence` on the Mac), and an update only
+ever replaces the game's own program files.
 
 **An update downloads only what changed.** The release is around 155 MB, and
 nearly all of it is the game's audio, which is the same in every build. The
@@ -746,25 +851,31 @@ went with it.
 ## What is in the repository
 
     AudioDefence.py     the launcher
+    AudioDefence.command  the launcher, double-clicked on the Mac (uv run)
     .gitattributes      LF for text, hands off the binaries
     audiodefence/       the port
         s3d/            the S3D audio engine on OpenAL Soft: HRTF, playlists,
                         streaming decoder, the original Freeverb reverb bus
         platform/       run loop, timers, notifications, user defaults, C rand,
-                        speech, the key map, the updater and its remote-zip reader
+                        speech, the key map, the updater and its remote-zip reader;
+                        host.py, every choice between Windows and the Mac, and
+                        macspeech.py, VoiceOver and the Mac's system voice
         game/           gameplay: enemies, bricks, weapons, power-ups, missions,
                         challenges, inventory, stats, the gameplay controllers
         ui/             the screens, built from the NIBs, and the VoiceOver
                         stand-in that reads them
         app.py          the app delegate: launch, menu music, navigation
     compiler.py          builds the executable, and the release zip (see below)
+    compiler.command    the same, double-clicked on the Mac
+    pyproject.toml      the packages, for uv; uv.lock pins them
     VERSION             the release tag, e.g. 26.09.20-2, built into the executable
     game/               the original game's own files (see below)
     assets/hrtf/        the HRTF recovered from the binary
     analysis/           the reverse engineering: disassembly, digests, dumps
     docs/               PORTING_NOTES.md, GAME_STRUCTURE.md
     tools/              reverse-engineering and asset tools
-    vendor/             OpenAL Soft, the NVDA controller client
+    vendor/             OpenAL Soft (the Windows DLL, and the Mac dylib in
+                        openal-mac/), the NVDA controller client
 
 ### `game/` — the original
 
