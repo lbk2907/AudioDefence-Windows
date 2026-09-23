@@ -407,13 +407,12 @@ class TarotScreen(ViewControllerScreen):
     #: cards are being dealt (user request).  The Back button is dimmed for those two seconds
     #: (`deactivate_buttons`) and so is Play, but `accessibilityPerformEscape` 0x1000728e4 goes straight to
     #: `backButtonPressed` without asking whether the button it stands for can be pressed, so the original
-    #: leaves the screen mid-deal and the port did too.  The screen says why rather than doing nothing
-    #: silently, since a key that does nothing at all reads as a game that has stopped listening.
-    DEALING_ESCAPE = 'The cards are still being dealt.'
+    #: leaves the screen mid-deal and the port did too.  It said "The cards are still being dealt" at first
+    #: and that was taken off again (user request): the deal is two seconds, the cards speak for themselves
+    #: at the end of it, and a sentence in the way of them is one more thing to sit through.
 
     def accessibility_perform_escape(self) -> None:
         if self.dealing:
-            self.speak(self.DEALING_ESCAPE)
             return
         super().accessibility_perform_escape()
 

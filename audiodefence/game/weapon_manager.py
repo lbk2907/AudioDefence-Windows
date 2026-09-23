@@ -264,6 +264,8 @@ class WeaponManager:
 
     def select_next_weapon(self) -> None:                 # 0x1000a9e04
         cw = self.current_weapon
+        if cw is not None:
+            cw.stop_firing_now()                          # PORT ADDITION: it is not the gun in hand now
         if cw is not None and (cw.state == 6 or cw.state == 8):
             cw.interrupt_reload()
         self.current_weapon_index = self.current_weapon_index + 1
@@ -292,6 +294,14 @@ class WeaponManager:
     def continuous_stop(self) -> None:                    # 0x1000aa2f0
         if self.current_weapon is not None:
             self.current_weapon.continuous_stop()
+
+    def stop_firing_after_player_was_killed(self) -> None:
+        """PORT ADDITION: the player is dead with the trigger still down (user request).  Nothing else
+        would stop the gun: the key is still held, so no release comes, and the weapon goes on firing into
+        the death overlay."""
+        for weapon in (self.current_weapon, self.melee_weapon):
+            if weapon is not None:
+                weapon.stop_firing_now()
 
     def weapon_did_finish_reloading(self) -> None:        # 0x1000aa34c
         pass

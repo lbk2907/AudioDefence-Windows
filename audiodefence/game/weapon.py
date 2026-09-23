@@ -277,6 +277,26 @@ class Weapon:
         elif self._state == 5:
             self.change_state(0)
 
+    def stop_firing_now(self) -> None:
+        """PORT ADDITION: stop this weapon where it stands - the loop, the warning loop, the state.
+
+        `continuous_stop` hands state 3 over to state 4, which stops the sound and plays the tail on the
+        next `update:`.  That is right while the weapon is in hand, and wrong the moment it is not: only
+        the current weapon is updated (`ADWeaponManager update:`), so a gun switched away from mid-burst
+        was left in state 3 with its "_conti" loop playing and nobody to stop it - and since the gun the
+        player then held had never been started, it never ran dry, so no reload was called out either.
+        The same holds when the player dies with the trigger down.
+        """
+        if self.continuous_sound is not None:
+            self.continuous_sound.stop()
+        if self.continuous_warning is not None:
+            self.continuous_warning.stop()
+        if self._state in (3, 4, 5):
+            self.play_continuous_tail()                   # the gun spins down, as it would have
+        self.set_state(0)
+        self.fire_rate_timer = 0.0
+        self.time_in_continous = 0.0
+
     def play_continuous_tail(self) -> None:               # 0x1000158b0
         tail = self.playlist.any_sound_with_prefix(f'weapon_gun_{self.name}_tail') if self.playlist else None
         if tail is not None:
