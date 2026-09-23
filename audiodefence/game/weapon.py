@@ -73,6 +73,7 @@ class Weapon:
         self.fire_rate_timer = 0.0
         self.continuous_sound = None
         self.continuous_warning = None
+        self.empty_loop = None                            # PORT ADDITION: the warning an empty gun makes
         self.reload_sound = None                          # PORT ADDITION: the one reload actually started
         self.last_announcer_speech = 0.0
         self.previous_tick_time = 0.0
@@ -191,6 +192,7 @@ class Weapon:
         if st == 0:
             if self.continuous_sound is not None and self.continuous_sound.playing:
                 self.continuous_sound.stop()
+            self.stop_empty_loop()                        # PORT ADDITION: nothing is left sounding at rest
         elif st == 1:
             if self.time_in_state > self.switching_time:
                 self.set_state(0)
@@ -223,7 +225,9 @@ class Weapon:
                 self.change_state(0)
                 self.play_continuous_tail()
         elif st == 5:
-            if self.time_in_state > self.fire_rate:
+            if self.start_empty_loop():                   # PORT ADDITION: held, it warns until it is let go
+                pass
+            elif self.time_in_state > self.fire_rate:
                 self.time_in_state = 0.0
                 self.play_click_sound()
         elif st == 6:
@@ -279,6 +283,7 @@ class Weapon:
             self.continuous_warning.play(True)
 
     def continuous_stop(self) -> None:                    # 0x1000157f8
+        self.stop_empty_loop()                            # PORT ADDITION: let go, and the warning stops
         if self.continuous_sound is not None:
             self.continuous_sound.stop()
         if self.continuous_warning is not None:
@@ -298,6 +303,7 @@ class Weapon:
         player then held had never been started, it never ran dry, so no reload was called out either.
         The same holds when the player dies with the trigger down.
         """
+        self.stop_empty_loop()
         if self.continuous_sound is not None:
             self.continuous_sound.stop()
         if self.continuous_warning is not None:
@@ -377,20 +383,56 @@ class Weapon:
             warning.set_gain(0.6)
             warning.play(False)
 
-    def play_click_sound(self, announce: bool = False) -> None:   # 0x100015f0c
-        """The empty click, and the announcer's "Reload" with it.
+    def empty_click(self):
+        """The weapon's own "_empty" recording, or None: not every gun has one."""
+        if self.playlist is None:
+            return None
+        return _at_the_sound(self.playlist.any_sound_with_prefix(self.click_sound_prefix))
 
-        Not every weapon has a click to play: the Machine Gun, the Claymore and the melee weapons have no
-        "_empty" recording in the game's own files, so for those the call-out is the only answer an empty
-        trigger gets.  `announce` (PORT ADDITION) is the shot that ran the clip out asking for the call-out
-        whatever the five-second gate says, since that is the moment it is for.
+    def empty_warning(self, held: bool):
+        """PORT ADDITION: what a gun with no "_empty" recording answers with instead (user request).
+
+        The Machine Gun, the Claymore and the melee weapons have no empty click in `game/sounds/_weapons`,
+        so pulling an empty trigger made no sound at all.  Each of them has its own warning instead: the
+        short one for a press, the loop for a trigger held down.  Nothing is taken from anywhere else - the
+        short one is never played by the game as it stands, since `anySoundWihSuffix:@"_warning"`
+        0x100015dec asks for a name ending in "_warning" and the file is "_warning_b", so it does not match
+        in the original either.  A gun that has its own click is untouched.
         """
+        if self.playlist is None:
+            return None
+        if held:
+            return _at_the_sound(self.playlist.any_sound_with_prefix(f'weapon_gun_{self.name}_warningloop'))
+        return _at_the_sound(self.playlist.any_sound_matching(
+            lambda k: '_warning' in k and 'warningloop' not in k))
+
+    def start_empty_loop(self) -> bool:
+        """PORT ADDITION: hold an empty trigger and the warning keeps sounding until it is let go.  True
+        when that is the answer for this gun, so the caller does not click as well."""
+        if self.empty_click() is not None:
+            return False
+        if self.empty_loop is not None and self.empty_loop.playing:
+            return True
+        loop = self.empty_warning(True)
+        if loop is None:
+            return False
+        loop.set_spatialized(False)
+        loop.set_gain(0.6)
+        loop.play(True)
+        self.empty_loop = loop
+        self.announce_reload()                            # said once, when the warning starts
+        return True
+
+    def stop_empty_loop(self) -> None:
+        if self.empty_loop is not None:
+            self.empty_loop.stop()
+            self.empty_loop = None
+
+    def announce_reload(self, announce: bool = False) -> None:
+        """The announcer's "Reload", or "Out of ammo" with nothing left to reload with.  `announce`
+        (PORT ADDITION) says it whatever the five-second gate says: the shot that ran the clip out is the
+        moment it is for."""
         from .parameters import GameParameters
-        click = _at_the_sound(
-            self.playlist.any_sound_with_prefix(self.click_sound_prefix)) if self.playlist else None
-        if click is not None:
-            click.set_spatialized(False)
-            click.play(False)
         if not GameParameters.shared().last_announcer_value():
             return
         if self.last_announcer_speech <= 5.0 and not announce:
@@ -404,9 +446,18 @@ class Weapon:
         if snd is not None:
             snd.play()
 
+    def play_click_sound(self, announce: bool = False) -> None:   # 0x100015f0c
+        """The empty click and the call-out: what a press on an empty trigger answers with."""
+        click = self.empty_click() or self.empty_warning(False)
+        if click is not None:
+            click.set_spatialized(False)
+            click.play(False)
+        self.announce_reload(announce)
+
     # --- reload / deploy -------------------------------------------------------------------------
     def reload(self) -> None:                             # 0x1000161cc
         from .parameters import GameParameters
+        self.stop_empty_loop()                            # PORT ADDITION: it is being reloaded now
         if self.bullets_total == 0:
             if not GameParameters.shared().last_announcer_value():
                 return

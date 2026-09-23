@@ -499,9 +499,15 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   time - so the shot that ran the clip out often got no call-out at all, and one arrived later, which is
   what it sounded like when the trigger was let go.  That shot now asks for the call-out whatever the gate
   says (`play_click_sound(announce=True)`); the clicks that follow are still gated, so it is said once.
-  The silence after that is the game's own: the Machine Gun, the Claymore and the melee weapons have no
-  "_empty" recording in `game/sounds/_weapons`, so pulling an empty trigger on them makes no click - the
-  Micro SMG, the Pistol and nine others do have one.
+  A gun with no "_empty" recording answers with its own warning instead (user request): the short one for a
+  press, the loop for a trigger held down, until it is let go, reloaded or put away (`Weapon.empty_warning`,
+  `start_empty_loop`).  The Machine Gun, the Claymore and the melee weapons have no empty click in
+  `game/sounds/_weapons`, so an empty trigger on them made no sound at all; the Micro SMG, the Pistol and
+  nine others do have one and are untouched.  Nothing is taken from anywhere else: the short warning is
+  never played by the game as it stands, since `anySoundWihSuffix:@"_warning"` 0x100015dec asks for a name
+  ending in "_warning" and the file is "_warning_b", so it does not match in the original either.  The
+  looping one does have a job - it is the low-ammo loop under continuous fire - and it is the same sound
+  here, told apart by there being no gunfire under it.
 
 * A gun stops firing when it is put away (user request).  `-[ADWeaponManager selectNextWeapon]`
   0x1000a9e04 interrupts a reload on the outgoing weapon and leaves everything else as it is, and only the
