@@ -492,6 +492,14 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   Triangle Delete, L1/R1 the tab arrows, L2/R2 Page Down/Up), and those key presses carry `pad`, so a key
   being captured in Settings -> Keyboard is cancelled by a controller button instead of taking the key it
   stands for.  SDL is asked (before pygame.init) to let PlayStation pads rumble over Bluetooth.
+* The Minigun power-up's gun is heard for as long as it fires (user request).  `-[ADMinigunPowerUp use]`
+  0x1000b2850 plays `minigun_fire` with `play:0`, once through, and the recording is 10 seconds
+  (`minigun_fire_a` 10.03, `_b` 9.98) against a duration of 5, 7.5, 10 or 12.5 seconds by upgrade (Weapons
+  .plist, PowerUps, Minigun).  Fully upgraded the gun therefore falls silent two and a half seconds before
+  it stops firing - the bullets still land, the gun is not heard - and `minigun_tail` comes out of that
+  silence.  The port loops it; `update:` 0x1000b2934 stops it where it always did, and the recording is
+  gunfire end to end, with no silence at either edge to be heard as a seam.
+
 * A gun's shot starts where the bang does, not where the file does (user request).  Some of the game's own
   recordings open with a moment of nothing - the Machine Gun's `_fire_a` has 133 ms of it, the Grenade
   Launcher's 109, the Bazooka's 62 - and `-[ADWeapon playSingleShootSound]` plays them from the top, so

@@ -1,4 +1,5 @@
 unrelease:
+The Minigun power-up is heard for as long as it fires. Fully upgraded it runs twelve and a half seconds, where its recording is ten, so the gun went quiet for the last two and a half while the bullets kept landing.
 Guns fire the moment you press. The Machine Gun's shot had an eighth of a second of silence recorded before the bang, which was heard as a gap between shots when you tapped it; the Grenade Launcher and the Bazooka had a little of the same. The recordings are untouched - the game starts them where the sound starts.
 On the Endless screen you can no longer leave while the cards are being dealt. Escape, or Circle on a controller, says the cards are still being dealt and keeps you there until they are down.
 The game runs on the Mac too: AudioDefence.app, in its own zip on the same release, updating itself like the Windows build. It speaks through VoiceOver, or through the system voice when VoiceOver is off, and Settings -> Speech has the system voice's own voice, rate, pitch and volume. The README's "On the Mac" says how to open it the first time and how to let VoiceOver speak for it.

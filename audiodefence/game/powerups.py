@@ -215,7 +215,14 @@ class MinigunPowerUp(PowerUp):
     def use(self) -> None:                                # 0x1000b2850 (no [super use])
         self.loop_sound = self.playlist.any_sound_containing('minigun_fire') if self.playlist is not None else None
         if self.loop_sound is not None:
-            self.loop_sound.play(False)
+            # DIVERGENCE: `play:0` - the gun is fired once through and not looped, and its recording is 10
+            # seconds (minigun_fire_a 10.03, _b 9.98) against a duration of 5, 7.5, 10 or 12.5 by upgrade
+            # (Weapons.plist, PowerUps, Minigun).  Fully upgraded the gun therefore falls silent two and a
+            # half seconds before it stops firing - the bullets still land, the gun is not heard - and the
+            # tail comes out of that silence.  It loops here (user request); `update:` stops it at the end
+            # as it always did, so nothing else changes, and the recording is gunfire end to end, with no
+            # silence at either edge to be heard as a seam.
+            self.loop_sound.play(True)
             self.loop_sound.set_gain(0.4)
         self.time_since_activation = 0.0
         self.active = True
