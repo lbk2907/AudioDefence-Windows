@@ -389,20 +389,22 @@ class Weapon:
             return None
         return _at_the_sound(self.playlist.any_sound_with_prefix(self.click_sound_prefix))
 
-    def empty_warning(self, held: bool):
+    def empty_warning(self):
         """PORT ADDITION: what a gun with no "_empty" recording answers with instead (user request).
 
         The Machine Gun, the Claymore and the melee weapons have no empty click in `game/sounds/_weapons`,
-        so pulling an empty trigger made no sound at all.  Each of them has its own warning instead: the
-        short one for a press, the loop for a trigger held down.  Nothing is taken from anywhere else - the
-        short one is never played by the game as it stands, since `anySoundWihSuffix:@"_warning"`
-        0x100015dec asks for a name ending in "_warning" and the file is "_warning_b", so it does not match
-        in the original either.  A gun that has its own click is untouched.
+        so pulling an empty trigger made no sound at all.  Each of them has a short warning of its own, and
+        that is what answers now - once for a press, and looping while the trigger is held.  It loops with a
+        rhythm already in it: the Machine Gun's is 0.57 s holding 0.36 s of alert, so it beeps and rests.
+
+        Nothing is taken from anywhere else.  This recording is never played by the game as it stands, since
+        `anySoundWihSuffix:@"_warning"` 0x100015dec asks for a name ending in "_warning" and the file is
+        "_warning_b", so it does not match in the original either.  The *looping* warning is left alone on
+        purpose: it is the low-ammo loop under continuous fire, and if an empty gun used it too, running low
+        and running out would be the same sound.  A gun that has its own click is untouched.
         """
         if self.playlist is None:
             return None
-        if held:
-            return _at_the_sound(self.playlist.any_sound_with_prefix(f'weapon_gun_{self.name}_warningloop'))
         return _at_the_sound(self.playlist.any_sound_matching(
             lambda k: '_warning' in k and 'warningloop' not in k))
 
@@ -411,11 +413,15 @@ class Weapon:
         when that is the answer for this gun, so the caller does not click as well."""
         if self.empty_click() is not None:
             return False
-        if self.empty_loop is not None and self.empty_loop.playing:
-            return True
-        loop = self.empty_warning(True)
-        if loop is None:
+        if self.empty_loop is not None:                   # already warning: asking `playing` here would
+            return True                                   # restart it, since play: on a live sound does
+        source = self.empty_warning()
+        if source is None:
             return False
+        # a voice of its own (S3DSound.copy): the press plays this same recording, and playing a sound that
+        # is already sounding restarts it - the two would cut each other, and a restart pending at the
+        # moment the trigger is let go would start the warning again after it had been stopped
+        loop = source.copy()
         loop.set_spatialized(False)
         loop.set_gain(0.6)
         loop.play(True)
@@ -448,7 +454,7 @@ class Weapon:
 
     def play_click_sound(self, announce: bool = False) -> None:   # 0x100015f0c
         """The empty click and the call-out: what a press on an empty trigger answers with."""
-        click = self.empty_click() or self.empty_warning(False)
+        click = self.empty_click() or self.empty_warning()
         if click is not None:
             click.set_spatialized(False)
             click.play(False)
