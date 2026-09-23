@@ -517,16 +517,20 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   silence.  The port loops it; `update:` 0x1000b2934 stops it where it always did, and the recording is
   gunfire end to end, with no silence at either edge to be heard as a seam.
 
-* A gun's shot starts where the bang does, not where the file does (user request).  Some of the game's own
+* A weapon's sounds start where the sound does, not where the file does (user request).  Some of the game's own
   recordings open with a moment of nothing - the Machine Gun's `_fire_a` has 133 ms of it, the Grenade
   Launcher's 109, the Bazooka's 62 - and `-[ADWeapon playSingleShootSound]` plays them from the top, so
   every press of the trigger waits that out before it is heard.  Tapping the Machine Gun, which is how it is
   fired, that silence is the gap between the shots.  The files are left as they are: `decoder.lead_in`
   measures the silence once from what the decoder already holds, and `S3DSound.skip_to` starts the source
   past it (`AL_SEC_OFFSET` before the play, in `_play_as_is`, in `copy` and in `play_copy_of`, so an
-  overlapping shot starts there too).  Only a weapon's `_fire_` sounds are given it (`weapon._start_at_the_
-  bang`), and only the silence: a recording that starts at once, like the Pistol's, is untouched, and a file
-  that is quiet for more than a quarter of a second is left alone in case the quiet is the sound itself.
+  overlapping shot starts there too).  It is not only the shot: the Machine Gun's tail opens with the same
+  133 ms and its deploy with 145, so letting go after a burst left a gap before the gun wound down, which
+  is what it sounded like.  Every sound a weapon takes from its playlist goes through `weapon._at_the_sound`
+  - shot, tail, continuous loop, warning, empty click, reload, deploy, voice, and the melee hit and miss -
+  and only the silence is skipped: a recording that starts at once, like the Pistol's, is untouched, and a
+  file that is quiet for more than a quarter of a second is left alone in case the quiet is the sound
+  itself.
 
 * Escape does nothing on the Endless screen while the cards are being dealt (user request).  The Back
   button is dimmed for those two seconds (`deactivate_buttons`), and so is Play in this port, but

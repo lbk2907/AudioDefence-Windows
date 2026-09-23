@@ -3,7 +3,7 @@ The game runs on the Mac too: AudioDefence.app, in its own zip on the same relea
 SAPI 5 stops the moment you interrupt it, and no longer holds up the game while it speaks. Settings, Speech has a Modern audio output row, on by default; turn it off to let Windows play it as before.
 Press Control to stop whatever is being read out, in the menus or in a game.
 On the Endless screen you can no longer leave while the cards are being dealt. Escape, or Circle on a controller, keeps you there until they are down.
-Guns fire the moment you press. The Machine Gun's shot had an eighth of a second of silence recorded before the bang, which was heard as a gap between shots when you tapped it; the Grenade Launcher and the Bazooka had a little of the same. The recordings are untouched - the game starts them where the sound starts.
+Guns are heard the moment you press, and the moment you let go. The Machine Gun's shot had an eighth of a second of silence recorded before the bang, and so did the sound of it winding down, which was the gap you heard when tapping it and when letting go after a burst. Every sound a weapon makes now starts where the sound starts; the recordings are untouched.
 The Minigun power-up is heard for as long as it fires. Fully upgraded it runs twelve and a half seconds, where its recording is ten, so the gun went quiet for the last two and a half while the bullets kept landing. And a power-up you are holding stops when you die, instead of firing on into the death screen.
 A gun that is still firing stops when you switch weapon or when you die. Switching away from the Micro SMG or the Machine Gun mid-burst used to leave the old gun firing away with nothing to stop it, and no reload was called out while that was happening.
 

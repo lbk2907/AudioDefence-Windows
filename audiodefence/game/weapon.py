@@ -37,26 +37,30 @@ def _c_div(a: int, b: int) -> int:
     return q if (a >= 0) == (b >= 0) else -q
 
 
-#: PORT DIVERGENCE: a shot starts where the bang does (user request).  Some of the game's own recordings
-#: open with a moment of nothing - the Machine Gun's 133 milliseconds of it, the Grenade Launcher's 109,
-#: the Bazooka's 62 - and the original plays them from the top, so every tap of the trigger waits that out
-#: before it is heard.  Tapping the Machine Gun, which is what it is for, that silence is the gap between
-#: the shots.  The file is left alone: the sound is started past its own silence instead
-#: (S3DSound.skip_to), measured once from what the decoder already holds (decoder.lead_in).
+#: PORT DIVERGENCE: a weapon's sounds start where the sound does (user request).  Some of the game's own
+#: recordings open with a moment of nothing - the Machine Gun's shot has 133 milliseconds of it, its tail
+#: 133 and its deploy 145, the Grenade Launcher's shot 109, the Tactical Rifle's deploy 104 - and the
+#: original plays them from the top, so the press and the sound are that far apart.  Tapping the Machine
+#: Gun, which is what it is for, that silence is the gap between the shots; letting go of it after a burst,
+#: it is the gap before the gun winds down.  The files are left alone: each sound is started past its own
+#: silence instead (S3DSound.skip_to), measured once from what the decoder already holds
+#: (decoder.lead_in), and only up to a quarter of a second, in case the quiet is the sound itself.
 _LEAD_IN: dict = {}
 
 
-def _start_at_the_bang(sound) -> None:
-    """Have this shot start where the recording does, not where the file does."""
+def _at_the_sound(sound):
+    """Have this sound start where the recording does, not where the file does; returns it, to wrap the
+    place it is taken from the playlist."""
     if sound is None or not sound.path:
-        return
+        return sound
     lead = _LEAD_IN.get(sound.path)
     if lead is None:
         from ..s3d import decoder
-        if not decoder.is_cached(sound.path):             # not decoded yet: ask again next shot, rather
-            return                                        # than remember that it has no silence in it
+        if not decoder.is_cached(sound.path):             # not decoded yet: ask again next time, rather
+            return sound                                  # than remember that it has no silence in it
         lead = _LEAD_IN[sound.path] = decoder.lead_in(sound.path)
     sound.skip_to = lead
+    return sound
 
 
 class Weapon:
@@ -256,12 +260,14 @@ class Weapon:
             return
         self.change_state(3)
         pl = self.playlist
-        self.continuous_sound = pl.any_sound_with_prefix(f'weapon_gun_{self.name}_conti') if pl else None
+        self.continuous_sound = _at_the_sound(pl.any_sound_with_prefix(f'weapon_gun_{self.name}_conti')) \
+            if pl else None
         if self.continuous_sound is not None:
             self.continuous_sound.set_spatialized(False)
             self.continuous_sound.set_gain(0.6)
             self.continuous_sound.play(True)
-        self.continuous_warning = pl.any_sound_with_prefix(f'weapon_gun_{self.name}_warningloop') if pl else None
+        self.continuous_warning = _at_the_sound(
+            pl.any_sound_with_prefix(f'weapon_gun_{self.name}_warningloop')) if pl else None
         if self.continuous_warning is not None:
             self.continuous_warning.set_spatialized(False)
             self.continuous_warning.set_gain(0.0)
@@ -298,7 +304,8 @@ class Weapon:
         self.time_in_continous = 0.0
 
     def play_continuous_tail(self) -> None:               # 0x1000158b0
-        tail = self.playlist.any_sound_with_prefix(f'weapon_gun_{self.name}_tail') if self.playlist else None
+        tail = _at_the_sound(
+            self.playlist.any_sound_with_prefix(f'weapon_gun_{self.name}_tail')) if self.playlist else None
         if tail is not None:
             tail.set_spatialized(False)
             tail.set_gain(0.6)
@@ -341,8 +348,7 @@ class Weapon:
             if fire is not None:
                 candidates = pl.sounds_matching(lambda k: '_fire_' in k)
                 if all(c.playing for c in candidates):
-                    fire = min(candidates, key=lambda c: c.duration - c.elapsed_time())
-                    _start_at_the_bang(fire)              # PORT DIVERGENCE: and so does the copy of it
+                    fire = _at_the_sound(min(candidates, key=lambda c: c.duration - c.elapsed_time()))
                     if S3DEngine.engine().play_copy_of(fire):     # let this shot overlap the last one
                         if warning is not None:
                             warning.set_spatialized(False)
@@ -350,15 +356,14 @@ class Weapon:
                             warning.play(False)
                         return
                     break
-            fire = pl.any_sound_containing('_fire_') if pl is not None else None
-            _start_at_the_bang(fire)                      # PORT DIVERGENCE: past the file's own silence
+            fire = _at_the_sound(pl.any_sound_containing('_fire_')) if pl is not None else None
             if fire is None:
                 # DIVERGENCE: the original spins forever here when no "_fire_" sound exists.
                 log.warning('%s has no _fire_ sound', self.name)
                 return
             if float(self.bullets_in_clip) > float(self.capacity) * 0.2:
                 continue
-            warning = pl.any_sound_with_suffix('_warning')
+            warning = _at_the_sound(pl.any_sound_with_suffix('_warning'))
         fire.set_spatialized(False)
         fire.set_gain(0.6)
         fire.play(False)
@@ -369,7 +374,8 @@ class Weapon:
 
     def play_click_sound(self) -> None:                   # 0x100015f0c
         from .parameters import GameParameters
-        click = self.playlist.any_sound_with_prefix(self.click_sound_prefix) if self.playlist else None
+        click = _at_the_sound(
+            self.playlist.any_sound_with_prefix(self.click_sound_prefix)) if self.playlist else None
         if click is not None:
             click.set_spatialized(False)
             click.play(False)
@@ -403,7 +409,8 @@ class Weapon:
         if self.is_reloading():
             return
         Tracker.shared().reload_weapon_with_remaining_bullets(self.bullets_in_clip, self.name)
-        snd = self.playlist.any_sound_with_prefix(f'weapon_gun_{self.name}_reloadfull') if self.playlist else None
+        snd = _at_the_sound(
+            self.playlist.any_sound_with_prefix(f'weapon_gun_{self.name}_reloadfull')) if self.playlist else None
         self.reload_sound = snd                           # PORT ADDITION: so pause and interrupt find this one
         if snd is not None:
             snd.set_spatialized(False)
@@ -429,13 +436,13 @@ class Weapon:
         self.change_state(1)
         self.time_since_last_shot = self.fire_rate
         pl = self.playlist
-        snd = pl.any_sound_with_prefix(f'weapon_gun_{self.name}_deploy') if pl else None
+        snd = _at_the_sound(pl.any_sound_with_prefix(f'weapon_gun_{self.name}_deploy')) if pl else None
         if snd is not None:
             snd.set_spatialized(False)
             snd.set_gain(0.6)
             snd.play(False)
         if GameParameters.shared().last_announcer_value():
-            voice = pl.any_sound_with_prefix(f'weapon_gun_{self.name}_voice') if pl else None
+            voice = _at_the_sound(pl.any_sound_with_prefix(f'weapon_gun_{self.name}_voice')) if pl else None
             if voice is not None:
                 voice.set_spatialized(False)
                 voice.set_gain(0.6)
@@ -496,7 +503,7 @@ class MeleeWeapon(Weapon):
         rather than opening it up, and it was a deliberate change to a game that was not asking for one:
         a melee weapon sounding from the hand is what the original does, on purpose, and this port's
         business is that game rather than a better idea of it."""
-        snd = self.playlist.any_sound_containing('_hit_') if self.playlist else None
+        snd = _at_the_sound(self.playlist.any_sound_containing('_hit_')) if self.playlist else None
         if snd is not None:
             snd.set_spatialized(False)
             snd.set_gain(0.8)
@@ -504,7 +511,7 @@ class MeleeWeapon(Weapon):
 
     def play_miss_sound(self) -> None:                    # 0x100007610
         """Not spatialised, and right not to be: a miss is your own swing, and it hit nothing."""
-        snd = self.playlist.any_sound_containing('_miss_') if self.playlist else None
+        snd = _at_the_sound(self.playlist.any_sound_containing('_miss_')) if self.playlist else None
         if snd is not None:
             snd.set_spatialized(False)
             snd.set_gain(0.8)
