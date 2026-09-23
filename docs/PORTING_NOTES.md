@@ -492,6 +492,15 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   Triangle Delete, L1/R1 the tab arrows, L2/R2 Page Down/Up), and those key presses carry `pad`, so a key
   being captured in Settings -> Keyboard is cancelled by a controller button instead of taking the key it
   stands for.  SDL is asked (before pygame.init) to let PlayStation pads rumble over Bluetooth.
+* Escape does nothing on the Endless screen while the cards are being dealt (user request).  The Back
+  button is dimmed for those two seconds (`deactivate_buttons`), and so is Play in this port, but
+  `-[ADViewController accessibilityPerformEscape]` 0x1000728e4 goes straight to `backButtonPressed` without
+  asking whether the button it stands for can be pressed - so the original leaves the screen mid-deal, and
+  the port did too, by Escape or by the controller's Circle, which stands for it.  `TarotScreen.dealing` is
+  on from the deal until `_cards_dealt`, and while it is on the screen says "The cards are still being
+  dealt" rather than leaving, since a key that does nothing at all reads as a game that has stopped
+  listening.  `back_button_pressed` holds as well, for anything else that might reach it.
+
 * PORT ADDITION: SAPI 5 is spoken on a thread of its own, and the game plays it rather than Windows
   (`platform/speech_audio.py`, `speech._SapiThread`; Settings -> Speech -> **Modern audio output**, on by
   default, `sapiModernAudio`).  Two things were measured on the user's machine and both are fixed here.
