@@ -1,5 +1,5 @@
 unrelease:
-Control stops the speech, wherever you are, as it does in a screen reader.
+Press Control to stop whatever is being read out, in the menus or in a game.
 SAPI 5 stops the moment you interrupt it, and no longer holds up the game while it speaks. Settings, Speech has a Modern audio output row, on by default; turn it off to let Windows play it as before.
 The game runs on the Mac too: AudioDefence.app, in its own zip on the same release, updating itself like the Windows build. It speaks through VoiceOver, or through the system voice when VoiceOver is off, and Settings -> Speech has the system voice's own voice, rate, pitch and volume. The README's "On the Mac" says how to open it the first time and how to let VoiceOver speak for it.
 
