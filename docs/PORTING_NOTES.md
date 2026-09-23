@@ -579,15 +579,29 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   SAPI hands its audio to Windows, which buffers it: asked to stop, the voice keeps talking for what is
   already on its way to the card - 29 ms after 50 ms of speech, 59 after 200, **100 after 500**, growing
   the longer it has been talking - which for a player who interrupts at every row is most of what makes a
-  voice feel slow.  With Modern audio output on, SAPI renders the line into an `SpMemoryStream` at the
-  card's own rate and shape (44.1 kHz, mono, 16 bit - a voice is mono, and stereo doubled every byte for a
-  copy of itself) and `SpeechAudio` plays it through an SDL audio device the speech opens for itself, as
-  `haptic_audio` does for a DualSense.  It is a device of its own on purpose: the engine is OpenAL, whose
+  voice feel slow.  With Modern audio output on, SAPI is given a stream of the game's own as its sound card
+  (`platform/speech_stream.py`, an `ISpAudio` handed to `ISpVoice::SetOutput`) and writes the voice into it
+  as it is synthesised, in pieces of about a tenth of a second, at the card's own rate and shape (44.1 kHz,
+  mono, 16 bit - a voice is mono, and stereo doubled every byte for a copy of itself); `SpeechAudio` plays
+  what arrives through an SDL audio device the speech opens for itself, as `haptic_audio` does for a
+  DualSense.  Where that cannot be done - an older comtypes, a SAPI that will not take the stream - the
+  line is rendered into an `SpMemoryStream` instead and handed over when it is made (`_render`), which is
+  how this was built first and is 9 to 100 ms slower depending on the line's length; and where the card
+  itself cannot be had, Windows speaks as it always did.  It is a device of its own on purpose: the engine is OpenAL, whose
   current context belongs to the thread that set it and which the reverb bus moves between two devices as
   it renders, so speech arriving from its own thread and touching any of that stops the game's sound dead -
   which is what it did, the first time this was built on an engine source.  Two more things were measured
-  and fixed the same way.  A line is rendered in pieces (`_SapiThread.pieces`, the first short), so the
-  first sound comes 30 ms after the key rather than at the end of the whole line.  And the bytes are read
+  and fixed the same way.  A rendered line is rendered in pieces (`_SapiThread.pieces`, the first short), so
+  the first sound comes 30 ms after the key rather than at the end of the whole line; a streamed one needs
+  no pieces at all, since the sound leaves SAPI as it is made - measured from the key to the first sound,
+  6 ms for a word, 14 ms for a settings row and 23 ms for a paragraph, against 25, 25 and 37 ms rendered,
+  and 121 ms rendered for a piece of the length the splitter allows.  Two ways of killing Python 3.14 were
+  found while building the stream, both avoided and both written up in `speech_stream.py`: a ctypes call
+  that lets the interpreter go, made from inside one of SAPI's callbacks, and letting the stream go while
+  SAPI still holds it (which is why `_to_windows` runs before the thread quits, and why `_Sapi.shutdown`
+  waits a moment for the thread when a stream is out).  SAPI lets the stream go when it takes its card
+  back, and one it has let go of cannot be handed over again, so each install makes a new one.  And the
+  bytes are read
   out of the stream with `IStream.RemoteRead` rather than asked for with `GetData`, which hands a million
   samples over one COM element at a time with the interpreter held: 61 ms against 1 ms for a page of the
   encyclopedia, and since the game mixes its own sound in Python on the audio thread (the reverb bus), 61 ms

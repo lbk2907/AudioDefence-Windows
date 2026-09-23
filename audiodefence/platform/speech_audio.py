@@ -59,24 +59,29 @@ KEEP = 0.010
 LOOK = 0.5
 
 
-def without_the_lead_in(pcm: bytes) -> bytes:
-    """A line with SAPI's own silence taken off the front of it.
+def lead_in_frames(pcm: bytes):
+    """How many frames of SAPI's own silence are at the front of this, or None if the voice is not in it.
 
     SAPI puts silence before every utterance, and it is not short: measured on the player's voice, 96 ms at
     rate 0, 56 ms at rate 5, and 20 ms with the rate boost.  Windows plays that silence too, and there it
     cannot be helped - but a line the game plays itself is bytes in a list, and the bytes can go.  Ten
     milliseconds of it are left, so the voice is not cut into.
 
-    Only the front of a line, and only the first half second is looked at: the silence between the sentences
-    of a line is the voice's own timing, and it stays.
+    Only the first half second is looked at: the silence between the sentences of a line is the voice's own
+    timing, and it stays.
     """
-    if not pcm:
-        return pcm
     head = np.frombuffer(pcm[:int(RATE * LOOK) * BYTES_PER_FRAME], dtype=np.int16)
     loud = np.flatnonzero(np.abs(head) > QUIET)
-    if not len(loud):                                     # all quiet: a line of silence, left as it is
+    if not len(loud):
+        return None
+    return max(0, int(loud[0]) // CHANNELS - int(RATE * KEEP))
+
+
+def without_the_lead_in(pcm: bytes) -> bytes:
+    """A line with SAPI's own silence taken off the front of it; one that is all silence is left alone."""
+    if not pcm:
         return pcm
-    frames = max(0, int(loud[0]) // CHANNELS - int(RATE * KEEP))
+    frames = lead_in_frames(pcm)
     return pcm[frames * BYTES_PER_FRAME:] if frames else pcm
 
 

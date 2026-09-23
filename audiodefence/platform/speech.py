@@ -235,8 +235,12 @@ class _SapiThread(threading.Thread):
         self.sapi = sapi
         self.queue: 'queue.Queue' = queue.Queue()
         self.voice = None
+        self.low = None                                   # the same voice as ISpVoice, which takes a stream
         self.card = None                                  # the output Windows gave it, kept to go back to
         self.rendering = False                            # whether its output is a memory stream just now
+        self.streaming = False                            # whether it writes into the game as it speaks
+        self.sink = None                                  # the stream it writes into (speech_stream.py)
+        self.line = 0                                     # the generation of the line being written now
         self.audio = None                                 # its output as ISpeechAudio, for stopping it
         self.ready = threading.Event()
 
@@ -271,7 +275,8 @@ class _SapiThread(threading.Thread):
             command = self.queue.get()
             try:
                 if command[0] == 'quit':
-                    self._to_windows()
+                    self._to_windows()                    # the card back before the stream is let go of
+                    self.sink = None
                     return
                 if command[0] == 'configure':
                     self._configure(*command[1:])
@@ -342,6 +347,8 @@ class _SapiThread(threading.Thread):
     def _speak(self, generation: int, body: str, flags: int, engine: bool) -> None:
         if generation < self.sapi.generation:             # interrupted before this one was reached
             return
+        if engine and self._stream(generation, body, flags):
+            return
         if engine and self._render(generation, body, flags):
             return
         self._to_windows()                                # Modern audio output was turned off: give it back
@@ -356,10 +363,62 @@ class _SapiThread(threading.Thread):
                 return
         self.voice.Speak(whole, flags)
 
+    def _dropping(self) -> bool:
+        """Whether the line being written into the game has been interrupted since it was started."""
+        return self.line < self.sapi.generation
+
+    def _to_the_game(self) -> bool:
+        """Make the game's own stream the voice's output.  Once, and then left alone until something takes
+        the voice back: turning Modern audio output off does, and so does the way out."""
+        if self.streaming:
+            return True
+        from . import speech_stream
+        from .speech_audio import SpeechAudio
+        self.sink = speech_stream.sink(SpeechAudio.shared().play, self._dropping)
+        if self.sink is None:                             # a new one every time: SAPI lets the old one go
+            return False                                  # when it takes its card back, and one let go of
+        try:                                              # cannot be handed over again
+            if self.low is None:
+                from comtypes.gen import SpeechLib
+                self.low = self.voice.QueryInterface(SpeechLib.ISpVoice)
+            self.low.SetOutput(self.sink, False)          # False: it writes in the shape we asked for
+        except Exception as exc:
+            log.info('SAPI would not write into the game, so its lines are rendered first: %s', exc)
+            return False
+        self.rendering = False
+        self.streaming = True
+        self.audio = None                                 # its output is ours now, not the card's
+        log.info('SAPI writes into the game as it speaks')
+        return True
+
+    def _stream(self, generation: int, body: str, flags: int) -> bool:
+        """Have SAPI write the line into the game as it makes it.  False if that cannot be done, and the
+        line is rendered into memory instead (`_render`)."""
+        from .speech_audio import SpeechAudio
+        if not SpeechAudio.shared().available():          # opened here, so the game never waits for a card
+            return False
+        if not self._to_the_game():
+            return False
+        text, template = body
+        whole = template % text if template else text
+        try:
+            if flags & _Sapi.SVSF_PURGE:                  # stop the line before this one being written, and
+                self.voice.Speak('', _Sapi.SVSF_ASYNC | _Sapi.SVSF_PURGE)    # only then call this one ours
+            self.line = generation
+            self.sink.starting()
+            self.voice.Speak(whole, (flags & ~_Sapi.SVSF_PURGE) | _Sapi.SVSF_ASYNC)
+        except Exception as exc:
+            log.info('SAPI would not speak into the game, so its lines are rendered first: %s', exc)
+            self._to_windows()
+            return False
+        return True
+
     def _render(self, generation: int, body: str, flags: int) -> bool:
         """Render into memory, a piece at a time, handing each to the card as it is made.  False if that
         cannot be done at all, and the line goes to Windows instead."""
         from .speech_audio import SAPI_FORMAT, SpeechAudio, without_the_lead_in
+        if self.streaming:                                # the stream was given up on: the card comes back
+            self._to_windows()
         audio = SpeechAudio.shared()
         if not audio.available():                         # opened here, so the game never waits for a card
             return False
@@ -415,15 +474,21 @@ class _SapiThread(threading.Thread):
     def _to_windows(self) -> None:
         """Give the voice its own output back.
 
-        Rendering points it at a memory stream, and it stays pointed there: a voice left that way speaks
-        into memory that nobody plays, which is silence.  So Windows' path asks for the card back every
-        time, cheaply - the flag means only the first line after a change pays for it.
+        Rendering points it at a memory stream, and streaming points it at the game's own stream, and
+        either way it stays pointed there: a voice left like that speaks into something nobody plays, which
+        is silence.  So Windows' path asks for the card back every time, cheaply - the flags mean only the
+        first line after a change pays for it.
+
+        The voice is stopped before the stream is taken away from it, which is also what makes this safe to
+        do on the way out: letting the stream go while SAPI still holds it ends the process (speech_stream).
         """
-        if not self.rendering:
+        if not self.rendering and not self.streaming:
             return
         try:
+            if self.streaming:
+                self.voice.Speak('', _Sapi.SVSF_ASYNC | _Sapi.SVSF_PURGE)
             self.voice.AudioOutputStream = self.card
-            self.rendering = False
+            self.rendering = self.streaming = False
             self.audio = None                             # ISpeechAudio for the card, not for the stream
         except Exception as exc:
             log.info('SAPI could not be given its own output back: %s', exc)
@@ -611,10 +676,12 @@ class _Sapi:
         """
         from .speech_audio import SpeechAudio
         self.generation += 1
-        if self.thread is not None:
-            self.thread.queue.put(('quit',))              # a daemon: told, not waited for
-            self.thread = None
-        SpeechAudio.shared().close()
+        thread, self.thread = self.thread, None
+        if thread is not None:
+            thread.queue.put(('quit',))                   # a daemon: told, not waited for, except that a
+            if thread.streaming:                          # stream of ours in SAPI's hands ends the process
+                thread.join(0.25)                         # if it is still there as the game goes (measured:
+        SpeechAudio.shared().close()                      # the thread is idle, and this costs under a ms)
 
 
 class _NoReaders:
