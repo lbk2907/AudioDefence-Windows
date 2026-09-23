@@ -120,6 +120,10 @@ def main(argv=None) -> int:
                 Pads.shared().stop()                    # a DualSense keeps a trigger feel until told not to
             except Exception:
                 log.exception('could not reset the controllers')
+            try:
+                Speech.shared().shutdown()              # and speech lets its own card go before the engine's
+            except Exception:
+                log.exception('could not stop the speech')
             engine.shutdown()
         finally:
             pygame.quit()

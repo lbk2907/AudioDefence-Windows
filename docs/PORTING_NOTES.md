@@ -514,7 +514,16 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   samples over one COM element at a time with the interpreter held: 61 ms against 1 ms for a page of the
   encyclopedia, and since the game mixes its own sound in Python on the audio thread (the reverb bus), 61 ms
   of held interpreter is a gap in the arena.  With both, the longest the main thread waits while a page is
-  spoken is 2.4 ms.  Stopping is then dropping what has not been played, which is instant (measured: a line
+  spoken is 2.4 ms.  Rendering takes the voice's output away from Windows, so the Windows path asks for it
+  back (`_to_windows`, the card kept from before the first render): without that, turning Modern audio
+  output off left the voice speaking into memory nobody played, which is silence until the game restarts.
+  `Speech.shutdown`, called before the engine's, stops the voice and closes the card, so a line still
+  waiting is not heard carrying on after the game has fallen silent.  Control stops the speech wherever it
+  is pressed (`ScreenManager.handle_event`, user request), as it does in a screen reader; the key still
+  reaches the screen, since it is also the melee key and the menus' first-and-last modifier.  NVDA's own
+  driver holds its first 50 ms of audio back before playing any (`_FIRST_AUDIO_CHUNK_MIN_DURATION_MS`), so
+  the first sound here - 30 ms after the key, 40 for a page of the encyclopedia - is the same trade made
+  the same way.  Stopping is then dropping what has not been played, which is instant (measured: a line
   with 512,808 samples still to play is down to the 352 of its fade the moment the next line is asked for),
   with 4 ms of ramp so the cut is not a click.  A `generation` counter carries the interruption to the
   thread: a line whose generation has passed is dropped rather than spoken.  With the row off - or with no

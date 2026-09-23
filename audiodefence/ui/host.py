@@ -137,6 +137,11 @@ class ScreenManager:
                 self._pad_input(pressed, source, name)
             return
         if event.type == pygame.KEYDOWN:
+            if event.key in (pygame.K_LCTRL, pygame.K_RCTRL) and not getattr(event, 'pad', False):
+                # PORT ADDITION: Control stops the speech, as it does in a screen reader (user request).
+                # The key goes on to the screen as well: it is the melee key, and held with an arrow it
+                # still reaches the first or last row.
+                Speech.shared().stop()
             top = self.top()
             if top is not None:
                 self._hold_navigation_key(event, top)

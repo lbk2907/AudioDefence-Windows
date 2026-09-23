@@ -73,8 +73,8 @@ class SpeechAudio:
 
     # --- the card -------------------------------------------------------------------------------------
     def available(self) -> bool:
-        """Whether a line can be played now; opens the device the first time.  Called from the game's own
-        thread before a line is handed to the speaking thread, so opening never happens beside the game."""
+        """Whether a line can be played now; opens the device the first time.  Called from the speaking
+        thread, so the game never waits for a card to open - it took 80 ms on this machine."""
         if self.device is not None:
             return True
         now = time.monotonic()
