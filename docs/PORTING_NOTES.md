@@ -492,6 +492,29 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   Triangle Delete, L1/R1 the tab arrows, L2/R2 Page Down/Up), and those key presses carry `pad`, so a key
   being captured in Settings -> Keyboard is cancelled by a controller button instead of taking the key it
   stands for.  SDL is asked (before pygame.init) to let PlayStation pads rumble over Bluetooth.
+* PORT ADDITION: SAPI 5 is spoken on a thread of its own, and the game plays it rather than Windows
+  (`platform/speech_audio.py`, `speech._SapiThread`; Settings -> Speech -> **Modern audio output**, on by
+  default, `sapiModernAudio`).  Two things were measured on the user's machine and both are fixed here.
+  Every SAPI call costs the thread that makes it - 10 ms to hand over a line, 26 to 30 ms when it cuts off
+  the one before, up to 50 ms to stop - which on the main thread is a stutter in the arena each time a row
+  is read; the calls are made on `_SapiThread` now, and handing over a line costs the game 1.3 ms.  And
+  SAPI hands its audio to Windows, which buffers it: asked to stop, the voice keeps talking for what is
+  already on its way to the card - 29 ms after 50 ms of speech, 59 after 200, **100 after 500**, growing
+  the longer it has been talking - which for a player who interrupts at every row is most of what makes a
+  voice feel slow.  With Modern audio output on, SAPI renders the line into an `SpMemoryStream` at the
+  engine's own rate and shape (44.1 kHz, stereo, 16 bit, so nothing is resampled; 160 to 220 times faster
+  than real time) and `SpeechAudio` plays it through a source of the game's own, filled by an
+  `AL_SOFT_callback_buffer` callback as the reverb bus is, `AL_DIRECT_CHANNELS_SOFT` so a voice is not put
+  through the HRTF.  Stopping is then dropping what has not been played, which is instant (measured: a line
+  with 512,808 samples still to play is down to the 352 of its fade the moment the next line is asked for),
+  with 4 ms of ramp so the cut is not a click.  A `generation` counter carries the interruption to the
+  thread: a line whose generation has passed is dropped rather than spoken.  With the row off - or with no
+  engine to play through, or if a render fails - SAPI speaks to Windows as it always did, and that path
+  stops better too: `ISpeechAudio.SetState(STOP)` before the purge, which halves the tail (100 ms to 45).
+  NVDA solves the same problem the same way and calls it the same thing, so its players know the name; none
+  of its code is here (it is GPL), and the two are not alike inside - NVDA streams through an `ISpAudio`
+  object of its own into its WASAPI player, where this renders to memory through SAPI's documented stream
+  and plays it through the engine the game already has.
 * PORT ADDITION: what a controller makes you feel (`platform/haptics.py`).  The original never vibrates.
   The proximity heartbeat (`ADPlayer`, player.py) pulses the heavy motor on each beat, scaled as the sound
   is (closeness squared * 0.7 + 0.3).  The rest is felt where it happens to a zombie, so a bullet, a melee

@@ -412,6 +412,7 @@ class ControlSchemePanel:
         params.set_trigger_level(params.DEFAULT_TRIGGER_FEEL)
         params.set_fine_haptics(params.DEFAULT_FINE_HAPTICS)
         params.set_key_names(params.DEFAULT_KEY_NAMES)
+        params.set_modern_audio(params.DEFAULT_MODERN_AUDIO)
         params.set_names_controller(None)
         params.set_speech_output(params.DEFAULT_SPEECH_OUTPUT)
         params.set_sapi(voice=None, rate=None, boost=False, pitch=0, volume=None)
@@ -557,6 +558,19 @@ class ControlSchemePanel:
                action=self.step_sapi_pitch, shift_action=self.step_sapi_pitch_back)
         t.cell(VOICE_NAME + ' volume', '%d%%' % sapi.volume(), hint='How loud %s speaks. ' % VOICE_NAME + self.SAPI_STEP_HINT,
                action=self.step_sapi_volume, shift_action=self.step_sapi_volume_back)
+        t.cell('Modern audio output', 'ON' if params.modern_audio() else 'OFF',
+               hint='Press Enter to toggle: when on, the game plays %s itself, and a line stops the moment '
+                    'you interrupt it. Turn it off to let Windows play it, which is slower to stop.'
+                    % VOICE_NAME,
+               action=self.toggle_modern_audio, shift_action=self.toggle_modern_audio)
+
+    def toggle_modern_audio(self) -> None:
+        """PORT ADDITION: whether the game plays SAPI 5 itself (speech_audio.py) or Windows does."""
+        params = GameParameters.shared()
+        params.set_modern_audio(not params.modern_audio())
+        self.reload_data()
+        self.announce('Modern audio output %s' % ('on' if params.modern_audio() else 'off'))
+        self._sapi_say('This is how it sounds.')          # in that voice, through whichever plays it now
 
     @staticmethod
     def _sapi_say(text: str) -> None:

@@ -1,4 +1,6 @@
 unrelease:
+SAPI 5 stops the moment you interrupt it. It used to keep talking for a moment after you moved on, longer the longer it had been speaking, because Windows had already been handed the words. The game plays SAPI 5 itself now. Settings, Speech has a Modern audio output row, on by default, and turning it off gives the old behaviour back.
+SAPI 5 no longer holds up the game while it speaks. Reading out a row took the game up to thirty milliseconds; it takes about one now.
 The game runs on the Mac too: AudioDefence.app, in its own zip on the same release, updating itself like the Windows build. It speaks through VoiceOver, or through the system voice when VoiceOver is off, and Settings -> Speech has the system voice's own voice, rate, pitch and volume. The README's "On the Mac" says how to open it the first time and how to let VoiceOver speak for it.
 
 26.09.22-2:
