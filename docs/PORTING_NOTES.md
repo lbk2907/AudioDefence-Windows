@@ -492,12 +492,22 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   Triangle Delete, L1/R1 the tab arrows, L2/R2 Page Down/Up), and those key presses carry `pad`, so a key
   being captured in Settings -> Keyboard is cancelled by a controller button instead of taking the key it
   stands for.  SDL is asked (before pygame.init) to let PlayStation pads rumble over Bluetooth.
+* A gun stops firing when it is put away (user request).  `-[ADWeaponManager selectNextWeapon]`
+  0x1000a9e04 interrupts a reload on the outgoing weapon and leaves everything else as it is, and only the
+  current weapon is updated (`update:` 0x1000a8c38): a gun switched away from mid-burst was left in state 3
+  - Continuous - with its "_conti" loop playing and nobody to stop it, which is what was heard as a gun that
+  would not stop.  No reload was called out with it either, since the gun the player was then holding had
+  never been started and so never ran dry.  `Weapon.stop_firing_now` stops the loop, plays the tail the
+  state machine would have played and puts the weapon back to Idle; `continuous_stop` is unchanged for the
+  ordinary release, where handing over to state 4 is right because the weapon is still being updated.
+
 * A power-up in hand stops when the player dies (user request).  `stopAllEnemiesAfterPlayerDeathByEnemy
   Name:` 0x1000c71b4 stops the enemies, the diamonds and the passers-by, and leaves the power-up running:
   the Minigun fires on into the death overlay, and the wind and the coil go on with it, until the run is
   cleaned up 0.1 s after killGameplay - which is a good while later, with the revive screen in between.
   `PowerUp.stop_after_player_was_killed` ends it where it is, and the death handler calls it as it calls
-  the others.  It matters more since the gun loops (above): played once through it fell quiet by itself.
+  the others - along with `WeaponManager.stop_firing_after_player_was_killed` for the gun, since the trigger
+  is still down, no release is coming, and the gun fired on into the death overlay (user request).  It matters more since the gun loops (above): played once through it fell quiet by itself.
 
 * The Minigun power-up's gun is heard for as long as it fires (user request).  `-[ADMinigunPowerUp use]`
   0x1000b2850 plays `minigun_fire` with `play:0`, once through, and the recording is 10 seconds
@@ -523,9 +533,10 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   `-[ADViewController accessibilityPerformEscape]` 0x1000728e4 goes straight to `backButtonPressed` without
   asking whether the button it stands for can be pressed - so the original leaves the screen mid-deal, and
   the port did too, by Escape or by the controller's Circle, which stands for it.  `TarotScreen.dealing` is
-  on from the deal until `_cards_dealt`, and while it is on the screen says "The cards are still being
-  dealt" rather than leaving, since a key that does nothing at all reads as a game that has stopped
-  listening.  `back_button_pressed` holds as well, for anything else that might reach it.
+  on from the deal until `_cards_dealt`, and while it is on the screen holds rather than leaving.  It said
+  "The cards are still being dealt" at first and that was taken off again (user request): the deal is two
+  seconds, the cards speak for themselves at the end of it, and a sentence in the way of them is one more
+  thing to sit through.  `back_button_pressed` holds as well, for anything else that might reach it.
 
 * PORT ADDITION: SAPI 5 is spoken on a thread of its own, and the game plays it rather than Windows
   (`platform/speech_audio.py`, `speech._SapiThread`; Settings -> Speech -> **Modern audio output**, on by
