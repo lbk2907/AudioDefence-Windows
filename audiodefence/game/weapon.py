@@ -317,10 +317,18 @@ class Weapon:
     def play_continuous_tail(self) -> None:               # 0x1000158b0
         tail = _at_the_sound(
             self.playlist.any_sound_with_prefix(f'weapon_gun_{self.name}_tail')) if self.playlist else None
-        if tail is not None:
-            tail.set_spatialized(False)
-            tail.set_gain(0.6)
-            tail.play(False)
+        if tail is None:
+            return
+        # DIVERGENCE: a weapon has one sound per file, so playing the tail again while the last one is still
+        # sounding restarts it (S3DSound.play: active -> stop, then _restart_play).  The Machine Gun's tail
+        # runs 1.8 seconds and a burst can be a tenth of that, so tapping the trigger cut the wind-down off
+        # and started it again, over and over.  The second one gets a voice of its own instead, the way an
+        # overlapping shot does (S3DEngine.play_copy_of, -[ADWeapon playSingleShootSound]).
+        if tail.playing and S3DEngine.engine().play_copy_of(tail):
+            return
+        tail.set_spatialized(False)
+        tail.set_gain(0.6)
+        tail.play(False)
 
     def resolve_shoot(self) -> bool:                      # 0x100015a1c
         if self.bullets_in_clip < 1 or self.bullets_total < 1:

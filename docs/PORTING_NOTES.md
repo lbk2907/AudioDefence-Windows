@@ -492,6 +492,13 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   Triangle Delete, L1/R1 the tab arrows, L2/R2 Page Down/Up), and those key presses carry `pad`, so a key
   being captured in Settings -> Keyboard is cancelled by a controller button instead of taking the key it
   stands for.  SDL is asked (before pygame.init) to let PlayStation pads rumble over Bluetooth.
+* A wind-down does not cut the last one off (user request).  A weapon has one sound per file, so playing
+  its "_tail" again while the last one is still sounding restarts it (`S3DSound.play`: active -> stop, then
+  `_restart_play`).  The Machine Gun's tail runs 1.8 seconds and a burst can be a tenth of that, so tapping
+  the trigger cut the wind-down off and started it again at every tap.  The second one is given a voice of
+  its own instead (`S3DEngine.play_copy_of`), the way an overlapping shot already is in
+  `-[ADWeapon playSingleShootSound]`.
+
 * Running the clip out with the trigger held is answered (user request).  Two things were in the way.
   `-[ADWeapon update:]` 0x100014c8c plays the click first and stops the gun after it, so the "Reload"
   call-out began underneath the gun still firing; the gun is stopped first here.  And `playClickSound`
