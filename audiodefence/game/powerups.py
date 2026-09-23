@@ -178,6 +178,21 @@ class PowerUp:
                 seconds = len(data) / float(rate) if rate else 0.0
         return min(seconds, self.FELT_START_MAX) if seconds > 0.0 else self.FELT_START
 
+    def stop_after_player_was_killed(self) -> None:
+        """PORT ADDITION: the player is dead, so the power-up stops where it is (user request).
+
+        The original leaves it running: the Minigun goes on firing into the death overlay, and the wind and
+        the coil go on with it.  Its gun was heard for ten seconds either way, being played once through;
+        now that the port loops it for as long as the gun fires, it would be heard until the run is cleaned
+        up - which is a good while, with the revive screen in between.  The enemies, the diamonds and the
+        passers-by are all stopped on death (`stopAllEnemiesAfterPlayerDeathByEnemyWithName:`); this is the
+        power-up joining them.
+        """
+        if not getattr(self, 'active', False):
+            return
+        self.active = False
+        self.clean()
+
     def _clean_with_kill_report(self) -> None:
         """Shared tail of the Minigun/Fireworks/Tesla clean: report and reset enemyKillsWithPowerup."""
         from .ingame_stats import InGameStats

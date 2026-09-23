@@ -512,6 +512,10 @@ class BrickManager:
             d.stop_after_player_was_killed()
         for p in list(self.passer_by_manager.all_passer_by()):
             p.stop_after_player_was_killed()
+        from .weapon_manager import WeaponManager                # PORT ADDITION: and the power-up in hand
+        power_up = WeaponManager.shared().power_up
+        if power_up is not None:
+            power_up.stop_after_player_was_killed()
 
     def show_revive_view(self) -> None:                         # 0x1000c74fc
         if self.gameplay_view_controller is not None:

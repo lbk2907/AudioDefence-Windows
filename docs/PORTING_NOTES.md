@@ -492,6 +492,13 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   Triangle Delete, L1/R1 the tab arrows, L2/R2 Page Down/Up), and those key presses carry `pad`, so a key
   being captured in Settings -> Keyboard is cancelled by a controller button instead of taking the key it
   stands for.  SDL is asked (before pygame.init) to let PlayStation pads rumble over Bluetooth.
+* A power-up in hand stops when the player dies (user request).  `stopAllEnemiesAfterPlayerDeathByEnemy
+  Name:` 0x1000c71b4 stops the enemies, the diamonds and the passers-by, and leaves the power-up running:
+  the Minigun fires on into the death overlay, and the wind and the coil go on with it, until the run is
+  cleaned up 0.1 s after killGameplay - which is a good while later, with the revive screen in between.
+  `PowerUp.stop_after_player_was_killed` ends it where it is, and the death handler calls it as it calls
+  the others.  It matters more since the gun loops (above): played once through it fell quiet by itself.
+
 * The Minigun power-up's gun is heard for as long as it fires (user request).  `-[ADMinigunPowerUp use]`
   0x1000b2850 plays `minigun_fire` with `play:0`, once through, and the recording is 10 seconds
   (`minigun_fire_a` 10.03, `_b` 9.98) against a duration of 5, 7.5, 10 or 12.5 seconds by upgrade (Weapons
