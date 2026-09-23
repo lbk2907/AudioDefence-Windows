@@ -751,6 +751,20 @@ class Speech:
         except Exception:
             log.debug('a screen reader would not stop on the way out')
 
+    def interrupt_sapi(self) -> None:
+        """PORT ADDITION: cut what SAPI 5 is saying, whoever is speaking now (user request).
+
+        `stop` asks whoever speaks *now*, which is the wrong question while a line is in the air: changing
+        Speech output from SAPI 5 to Automatic left SAPI's line playing to the end, since by then Automatic
+        was NVDA and NVDA was not saying anything.  The menus call this on every key, so a line the game is
+        playing itself is never left running by a key that has moved on (ui/host.py).
+        """
+        from .speech_audio import SpeechAudio
+        SpeechAudio.shared().stop()                       # what the game is playing: gone at once
+        sapi = self._sapi
+        if sapi is not None and sapi.thread is not None:  # and what it was about to say
+            sapi.stop()
+
     def stop(self) -> None:
         choice = self.choice
         if choice == SCREEN_READER:

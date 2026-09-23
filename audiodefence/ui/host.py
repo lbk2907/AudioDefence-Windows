@@ -144,6 +144,13 @@ class ScreenManager:
                 Speech.shared().stop()
             top = self.top()
             if top is not None:
+                # PORT ADDITION: in the menus every key cuts what SAPI 5 is saying (user request), since a
+                # key means the player has moved on - including the key that changes Speech output away
+                # from SAPI 5, which used to leave its line playing to the end.  Not in a game: there a key
+                # is firing or turning, and an announcement is not something the player asked to stop.
+                from .gameplay_screen import GameplayScreen
+                if not isinstance(top, GameplayScreen):
+                    Speech.shared().interrupt_sapi()
                 self._hold_navigation_key(event, top)
                 top.key_down(event)
         elif event.type == pygame.KEYUP:

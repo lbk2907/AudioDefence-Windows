@@ -524,7 +524,12 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   gain goes to zero first (one call), and the rest happens in silence.  Shutdown touches only what was used:
   `Speech.readers` builds Prism on being asked for, and building it to tell it to stop took 80 ms.  Control stops the speech wherever it
   is pressed (`ScreenManager.handle_event`, user request), as it does in a screen reader; the key still
-  reaches the screen, since it is also the melee key and the menus' first-and-last modifier.  NVDA's own
+  reaches the screen, since it is also the melee key and the menus' first-and-last modifier.  In the menus
+  every key cuts what SAPI 5 is saying (`Speech.interrupt_sapi`, user request): a key means the player has
+  moved on, and `stop` alone asks whoever speaks *now*, which is the wrong question while a line is in the
+  air - changing Speech output from SAPI 5 to Automatic left SAPI's line playing to the end, since by then
+  Automatic was NVDA and NVDA was saying nothing.  Not in a game, where a key is firing or turning and an
+  announcement is not what the player meant to stop.  NVDA's own
   driver holds its first 50 ms of audio back before playing any (`_FIRST_AUDIO_CHUNK_MIN_DURATION_MS`), so
   the first sound here - 30 ms after the key, 40 for a page of the encyclopedia - is the same trade made
   the same way.  Stopping is then dropping what has not been played, which is instant (measured: a line
