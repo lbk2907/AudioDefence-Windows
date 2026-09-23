@@ -566,8 +566,10 @@ class ControlSchemePanel:
 
     def toggle_modern_audio(self) -> None:
         """PORT ADDITION: whether the game plays SAPI 5 itself (speech_audio.py) or Windows does."""
+        from ..platform.speech import Speech
         params = GameParameters.shared()
         params.set_modern_audio(not params.modern_audio())
+        Speech.shared().modern_audio_changed()            # off hands the voice back now, not next time
         self.reload_data()
         self.announce('Modern audio output %s' % ('on' if params.modern_audio() else 'off'))
         self._sapi_say('This is how it sounds.')          # in that voice, through whichever plays it now

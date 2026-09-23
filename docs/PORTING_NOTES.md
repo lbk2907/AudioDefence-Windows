@@ -601,6 +601,11 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   SAPI still holds it (which is why `_to_windows` runs before the thread quits, and why `_Sapi.shutdown`
   waits a moment for the thread when a stream is out).  SAPI lets the stream go when it takes its card
   back, and one it has let go of cannot be handed over again, so each install makes a new one.  Whichever
+  way the setting is changed, the row tells the thread about it (`modern_audio_changed`) rather than
+  leaving it to be noticed when the next line is spoken: the line that says it has been turned off is
+  itself interrupted often enough - by the sample line after it, or by the next key - that the hand-back
+  could wait for a line that never came, and the game was still playing SAPI itself in the meantime.  Which
+  way the voice is going out is in the log either way, one line each way round.  Whichever
   way the setting is changed, what is being said when it changes is cut first: turning it on while Windows
   was speaking left Windows playing 0.2 s of the old line over the top of the new one, out of its own
   buffer, which the switch cannot reach once the voice is pointed elsewhere.  And the

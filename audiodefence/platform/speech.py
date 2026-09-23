@@ -278,6 +278,9 @@ class _SapiThread(threading.Thread):
                     self._to_windows()                    # the card back before the stream is let go of
                     self.sink = None
                     return
+                if command[0] == 'windows':               # Modern audio output was turned off just now
+                    self._to_windows()
+                    continue
                 if command[0] == 'configure':
                     self._configure(*command[1:])
                 elif command[0] == 'stop':
@@ -496,8 +499,11 @@ class _SapiThread(threading.Thread):
                 from .speech_audio import SpeechAudio     # and what the game already holds of that line
                 SpeechAudio.shared().stop()
             self.voice.AudioOutputStream = self.card
+            told = self.streaming
             self.rendering = self.streaming = False
             self.audio = None                             # ISpeechAudio for the card, not for the stream
+            if told:
+                log.info('SAPI speaks to Windows again')  # the other side of `_to_the_game`'s line
         except Exception as exc:
             log.info('SAPI could not be given its own output back: %s', exc)
 
@@ -665,6 +671,18 @@ class _Sapi:
         self.worker().say(body, flags, engine, self.generation)
         return True
 
+    def modern_audio_changed(self) -> None:
+        """PORT ADDITION: the Modern audio output row was pressed.
+
+        Turning it off hands the voice back to Windows now, rather than whenever the next line happens to
+        be spoken: the line that says it has been turned off is itself interrupted often enough - by the
+        sample line after it, or by the next key - that the hand-back could wait for a line that never
+        came, and until then the game was still playing SAPI itself.  Turning it on needs nothing: the
+        next line takes the voice over as it is spoken.
+        """
+        if self.thread is not None and not self.modern_audio():
+            self.thread.queue.put(('windows',))
+
     def stop(self) -> None:
         if self.voice is None:
             return
@@ -827,6 +845,12 @@ class Speech:
                 self._readers.stop()
         except Exception:
             log.debug('a screen reader would not stop on the way out')
+
+    def modern_audio_changed(self) -> None:
+        """PORT ADDITION: the Modern audio output row was pressed (user request).  Only what has already
+        been built is told: a game that has never spoken through SAPI has nothing to hand back."""
+        if self._sapi is not None:
+            self._sapi.modern_audio_changed()
 
     def interrupt_sapi(self) -> None:
         """PORT ADDITION: cut what SAPI 5 is saying, whoever is speaking now (user request).
