@@ -592,7 +592,12 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   samples over one COM element at a time with the interpreter held: 61 ms against 1 ms for a page of the
   encyclopedia, and since the game mixes its own sound in Python on the audio thread (the reverb bus), 61 ms
   of held interpreter is a gap in the arena.  With both, the longest the main thread waits while a page is
-  spoken is 2.4 ms.  Rendering takes the voice's output away from Windows, so the Windows path asks for it
+  spoken is 2.4 ms.  SAPI puts silence in front of every utterance it makes - measured on the user's voice,
+  96 ms at rate 0, 56 ms at rate 5, 22 ms with the rate boost - and Windows plays that silence too, which is
+  half of what a line costs before it is heard; a line the game plays itself is bytes in a list, so the
+  silence comes off the front of it (`without_the_lead_in`, ten milliseconds left so the voice is not cut
+  into, and only the front of the first piece: the quiet between sentences is the voice's own timing).
+  Rendering takes the voice's output away from Windows, so the Windows path asks for it
   back (`_to_windows`, the card kept from before the first render): without that, turning Modern audio
   output off left the voice speaking into memory nobody played, which is silence until the game restarts.
   `Speech.shutdown`, called before the engine's, stops the voice and closes the card, so a line still

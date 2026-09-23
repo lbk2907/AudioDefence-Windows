@@ -359,7 +359,7 @@ class _SapiThread(threading.Thread):
     def _render(self, generation: int, body: str, flags: int) -> bool:
         """Render into memory, a piece at a time, handing each to the card as it is made.  False if that
         cannot be done at all, and the line goes to Windows instead."""
-        from .speech_audio import SAPI_FORMAT, SpeechAudio
+        from .speech_audio import SAPI_FORMAT, SpeechAudio, without_the_lead_in
         audio = SpeechAudio.shared()
         if not audio.available():                         # opened here, so the game never waits for a card
             return False
@@ -377,6 +377,8 @@ class _SapiThread(threading.Thread):
                 self.rendering = True
                 self.voice.Speak(template % piece if template else piece, flags)
                 pcm = self._bytes_of(stream)
+                if not i:                                 # the line starts when the voice does, not when
+                    pcm = without_the_lead_in(pcm)        # SAPI's silence before it does
                 if generation < self.sapi.generation:
                     return True
                 audio.play(pcm)
