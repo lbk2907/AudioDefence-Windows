@@ -201,11 +201,16 @@ class Weapon:
             if self.fire_rate_timer > self.fire_rate:
                 self.fire_rate_timer = 0.0
                 if not self.resolve_shoot():
-                    self.play_click_sound()
+                    # DIVERGENCE: 0x100014c8c plays the click first and stops the gun after it, so the
+                    # "Reload" call-out starts underneath the gun still firing and its first word is lost.
+                    # The gun stops first here.  And the call-out is not held back for the shot that runs
+                    # the clip out (`announce=True`): the five-second gate is right for the clicks that
+                    # follow, and wrong for the one moment the player needs to be told (user request).
                     if self.continuous_sound is not None:
                         self.continuous_sound.stop()
                     if self.continuous_warning is not None:
                         self.continuous_warning.stop()
+                    self.play_click_sound(announce=True)
                     self.set_state(5)
             self.fire_rate_timer = self.fire_rate_timer + dt
             self.time_in_continous = self.time_in_state
@@ -372,7 +377,14 @@ class Weapon:
             warning.set_gain(0.6)
             warning.play(False)
 
-    def play_click_sound(self) -> None:                   # 0x100015f0c
+    def play_click_sound(self, announce: bool = False) -> None:   # 0x100015f0c
+        """The empty click, and the announcer's "Reload" with it.
+
+        Not every weapon has a click to play: the Machine Gun, the Claymore and the melee weapons have no
+        "_empty" recording in the game's own files, so for those the call-out is the only answer an empty
+        trigger gets.  `announce` (PORT ADDITION) is the shot that ran the clip out asking for the call-out
+        whatever the five-second gate says, since that is the moment it is for.
+        """
         from .parameters import GameParameters
         click = _at_the_sound(
             self.playlist.any_sound_with_prefix(self.click_sound_prefix)) if self.playlist else None
@@ -381,7 +393,7 @@ class Weapon:
             click.play(False)
         if not GameParameters.shared().last_announcer_value():
             return
-        if self.last_announcer_speech <= 5.0:
+        if self.last_announcer_speech <= 5.0 and not announce:
             return
         self.last_announcer_speech = 0.0
         announcer = S3DEngine.engine().play_list_with_name('announcer')

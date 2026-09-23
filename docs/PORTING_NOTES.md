@@ -492,6 +492,17 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   Triangle Delete, L1/R1 the tab arrows, L2/R2 Page Down/Up), and those key presses carry `pad`, so a key
   being captured in Settings -> Keyboard is cancelled by a controller button instead of taking the key it
   stands for.  SDL is asked (before pygame.init) to let PlayStation pads rumble over Bluetooth.
+* Running the clip out with the trigger held is answered (user request).  Two things were in the way.
+  `-[ADWeapon update:]` 0x100014c8c plays the click first and stops the gun after it, so the "Reload"
+  call-out began underneath the gun still firing; the gun is stopped first here.  And `playClickSound`
+  0x100015f0c says nothing if the announcer spoke in the last five seconds, which in a fight is most of the
+  time - so the shot that ran the clip out often got no call-out at all, and one arrived later, which is
+  what it sounded like when the trigger was let go.  That shot now asks for the call-out whatever the gate
+  says (`play_click_sound(announce=True)`); the clicks that follow are still gated, so it is said once.
+  The silence after that is the game's own: the Machine Gun, the Claymore and the melee weapons have no
+  "_empty" recording in `game/sounds/_weapons`, so pulling an empty trigger on them makes no click - the
+  Micro SMG, the Pistol and nine others do have one.
+
 * A gun stops firing when it is put away (user request).  `-[ADWeaponManager selectNextWeapon]`
   0x1000a9e04 interrupts a reload on the outgoing weapon and leaves everything else as it is, and only the
   current weapon is updated (`update:` 0x1000a8c38): a gun switched away from mid-burst was left in state 3
