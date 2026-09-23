@@ -600,7 +600,10 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   that lets the interpreter go, made from inside one of SAPI's callbacks, and letting the stream go while
   SAPI still holds it (which is why `_to_windows` runs before the thread quits, and why `_Sapi.shutdown`
   waits a moment for the thread when a stream is out).  SAPI lets the stream go when it takes its card
-  back, and one it has let go of cannot be handed over again, so each install makes a new one.  And the
+  back, and one it has let go of cannot be handed over again, so each install makes a new one.  Whichever
+  way the setting is changed, what is being said when it changes is cut first: turning it on while Windows
+  was speaking left Windows playing 0.2 s of the old line over the top of the new one, out of its own
+  buffer, which the switch cannot reach once the voice is pointed elsewhere.  And the
   bytes are read
   out of the stream with `IStream.RemoteRead` rather than asked for with `GetData`, which hands a million
   samples over one COM element at a time with the interpreter held: 61 ms against 1 ms for a page of the

@@ -306,15 +306,19 @@ class _SapiThread(threading.Thread):
                 self.audio = False
         return self.audio or None
 
-    def _stop(self, generation: int) -> None:
-        if generation < self.sapi.generation:
-            return
+    def _cut_what_is_playing(self) -> None:
+        """Stop the voice now: drop what Windows already has of it, then purge, then let it run again."""
         audio = self._audio_stream()
-        if audio is not None:                             # drop what Windows already has, then purge
+        if audio is not None:
             audio.SetState(_Sapi.SAS_STOP)
         self.voice.Speak('', _Sapi.SVSF_ASYNC | _Sapi.SVSF_PURGE)
         if audio is not None:
             audio.SetState(_Sapi.SAS_RUN)
+
+    def _stop(self, generation: int) -> None:
+        if generation < self.sapi.generation:
+            return
+        self._cut_what_is_playing()
 
     #: how long a piece of a line may be before it is split again: the first short, so speech starts at
     #: once, and the rest longer, since they are made while the first is being heard.  Rendering a piece
@@ -374,7 +378,9 @@ class _SapiThread(threading.Thread):
             return True
         from . import speech_stream
         from .speech_audio import SpeechAudio
-        self.sink = speech_stream.sink(SpeechAudio.shared().play, self._dropping)
+        self._cut_what_is_playing()                       # Windows is speaking: what it has buffered plays
+        self.sink = speech_stream.sink(SpeechAudio.shared().play, self._dropping)   # on after the switch
+        # otherwise - 0.2 s of the old line, measured, over the top of the new one
         if self.sink is None:                             # a new one every time: SAPI lets the old one go
             return False                                  # when it takes its card back, and one let go of
         try:                                              # cannot be handed over again
@@ -404,7 +410,7 @@ class _SapiThread(threading.Thread):
         try:
             if flags & _Sapi.SVSF_PURGE:                  # stop the line before this one being written, and
                 self.voice.Speak('', _Sapi.SVSF_ASYNC | _Sapi.SVSF_PURGE)    # only then call this one ours
-            self.line = generation
+            self.line = generation                        # (a switch cuts what was playing on its own way)
             self.sink.starting()
             self.voice.Speak(whole, (flags & ~_Sapi.SVSF_PURGE) | _Sapi.SVSF_ASYNC)
         except Exception as exc:
@@ -487,6 +493,8 @@ class _SapiThread(threading.Thread):
         try:
             if self.streaming:
                 self.voice.Speak('', _Sapi.SVSF_ASYNC | _Sapi.SVSF_PURGE)
+                from .speech_audio import SpeechAudio     # and what the game already holds of that line
+                SpeechAudio.shared().stop()
             self.voice.AudioOutputStream = self.card
             self.rendering = self.streaming = False
             self.audio = None                             # ISpeechAudio for the card, not for the stream
