@@ -98,10 +98,16 @@ class SpeechAudio:
         return True
 
     def close(self) -> None:
+        """Stop and let the card go.  Pausing first is what actually silences it: closing takes twenty
+        milliseconds or so, and those are twenty milliseconds of held interpreter."""
         device, self.device = self.device, None
         with self.lock:
             self.chunks, self.at = [], 0
         if device is not None:
+            try:
+                device.pause(1)
+            except Exception:
+                pass
             try:
                 device.close()
             except Exception:

@@ -584,8 +584,9 @@ class _Sapi:
         engine = self.modern_audio()                      # the card is opened by the thread, not here
         if interrupt:
             self.generation += 1
-            if engine:                                    # cut here rather than wait for the thread to wake
-                SpeechAudio.shared().stop()
+            # cut here rather than wait for the thread to wake, and whichever way Modern audio output is set
+            # now: what is playing may have been started the other way, and it is still playing.
+            SpeechAudio.shared().stop()
         self.worker().say(body, flags, engine, self.generation)
         return True
 
@@ -599,19 +600,18 @@ class _Sapi:
 
     def shutdown(self) -> None:
         """PORT ADDITION: the game is closing.  Silence the voice and let the card go, so a line still
-        waiting is not heard carrying on by itself after the game's own sound has stopped."""
+        waiting is not heard carrying on by itself after the game's own sound has stopped.
+
+        Nothing here waits for anything: the thread is a daemon and is only told, and the voice on this
+        side has not spoken since the thread took the speaking over, so there is nothing to purge.  Closing
+        is Python work, and the game's own sound is mixed by Python on the audio thread, so every
+        millisecond spent here is a millisecond of the arena not being mixed.
+        """
         from .speech_audio import SpeechAudio
         self.generation += 1
-        SpeechAudio.shared().stop()
         if self.thread is not None:
-            self.thread.queue.put(('quit',))
-            self.thread.join(0.5)
+            self.thread.queue.put(('quit',))              # a daemon: told, not waited for
             self.thread = None
-        if self.voice is not None:
-            try:
-                self.voice.Speak('', self.SVSF_ASYNC | self.SVSF_PURGE)
-            except Exception as exc:
-                log.debug('SAPI would not stop on the way out: %s', exc)
         SpeechAudio.shared().close()
 
 
@@ -740,12 +740,14 @@ class Speech:
         the engine goes.  A line still waiting was heard carrying on by itself after the game had fallen
         silent, and then the window closed on top of it."""
         try:
-            self.sapi.shutdown()
-        except Exception:
+            if self._sapi is not None:                    # only what has actually been used: `sapi` and
+                self._sapi.shutdown()                     # `readers` make their own on being asked for, and
+        except Exception:                                 # building Prism to tell it to stop took 80 ms
             log.exception('the speech card was not closed cleanly')
         try:
             self.nvda.stop()
-            self.readers.stop()
+            if self._readers is not None:
+                self._readers.stop()
         except Exception:
             log.debug('a screen reader would not stop on the way out')
 

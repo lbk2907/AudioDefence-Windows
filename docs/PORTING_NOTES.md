@@ -518,7 +518,11 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   back (`_to_windows`, the card kept from before the first render): without that, turning Modern audio
   output off left the voice speaking into memory nobody played, which is silence until the game restarts.
   `Speech.shutdown`, called before the engine's, stops the voice and closes the card, so a line still
-  waiting is not heard carrying on after the game has fallen silent.  Control stops the speech wherever it
+  waiting is not heard carrying on after the game has fallen silent.  Closing the game is all Python work -
+  measured: the engine's own stop 63 ms, the speech card 27, `pygame.quit()` 43 - and the arena is mixed by
+  Python on the audio thread, so with the music still playing it stuttered between the steps: the listener's
+  gain goes to zero first (one call), and the rest happens in silence.  Shutdown touches only what was used:
+  `Speech.readers` builds Prism on being asked for, and building it to tell it to stop took 80 ms.  Control stops the speech wherever it
   is pressed (`ScreenManager.handle_event`, user request), as it does in a screen reader; the key still
   reaches the screen, since it is also the melee key and the menus' first-and-last modifier.  NVDA's own
   driver holds its first 50 ms of audio back before playing any (`_FIRST_AUDIO_CHUNK_MIN_DURATION_MS`), so

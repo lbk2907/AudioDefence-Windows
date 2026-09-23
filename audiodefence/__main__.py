@@ -117,6 +117,16 @@ def main(argv=None) -> int:
         log.info('shutting down')
         try:
             try:
+                # PORT ADDITION: silence the game before taking it apart.  Shutting the engine down, closing
+                # the speech card and pygame.quit() are all Python work of a few tens of milliseconds each,
+                # and the game's own sound is mixed by Python on the audio thread (the reverb bus): with the
+                # music still playing it stuttered on the way out, stopping and starting between the steps.
+                from .s3d import openal as oal
+                engine.al.alListenerf(oal.AL_GAIN, 0.0)   # one call: silent before any of the slow work
+                engine.stop_all()
+            except Exception:
+                log.exception('could not stop the sounds')
+            try:
                 Pads.shared().stop()                    # a DualSense keeps a trigger feel until told not to
             except Exception:
                 log.exception('could not reset the controllers')
