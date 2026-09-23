@@ -8,6 +8,7 @@ The Minigun power-up is heard for as long as it fires. Fully upgraded it runs tw
 A gun that is still firing stops when you switch weapon or when you die. Switching away from the Micro SMG or the Machine Gun mid-burst used to leave the old gun firing away with nothing to stop it, and no reload was called out while that was happening.
 When you hold the trigger until the clip is out, the gun stops before the Reload call-out rather than under it, and the call-out is always said at that moment - it used to be held back if anything had been called out in the last five seconds, which in a fight is most of the time. And a gun with no empty click of its own - the Machine Gun is one - now answers with its own warning instead of saying nothing: once for a press, and over and over while you hold the trigger down. The low ammo warning still means only that.
 Tapping the trigger no longer cuts the gun's wind-down off and starts it again. Each tap now winds down over the last one.
+The game closes properly when SAPI 5 is what speaks. It could hang on the way out, and there was a click as it went.
 
 26.09.22-2:
 You can turn with buttons on a game controller instead of a stick: the D-pad, left and right, to begin with. Settings, Joystick has them as Alternate turn left and Alternate turn right, and you can set them to any buttons you like. They turn at the same speed as the keyboard, and the sticks keep turning as they always did. When the tutorial names your controller, the aiming line names them too, by whatever you have set them to.

@@ -24,6 +24,7 @@ SAPI speaks to Windows as it always did (speech.py).
 """
 from __future__ import annotations
 
+import ctypes
 import logging
 import threading
 import time
@@ -98,20 +99,40 @@ class SpeechAudio:
         return True
 
     def close(self) -> None:
-        """Stop and let the card go.  Pausing first is what actually silences it: closing takes twenty
-        milliseconds or so, and those are twenty milliseconds of held interpreter."""
+        """Stop and let the card go, on the way out.
+
+        The fade goes first and is given SDL's own buffer's worth of time to be played, so the card is not
+        cut off mid-waveform - that was heard as a click as the game closed.
+
+        Then the pause goes through SDL itself rather than through pygame.  SDL waits for the audio callback
+        to return before it pauses, and that callback is Python, so it wants the interpreter - which the
+        thread asking for the pause is holding.  pygame's `pause` holds it throughout; the game hung there
+        on the way out about two closes in three, with the reverb bus (also Python, also on an audio thread)
+        holding the interpreter in the meantime.  ctypes lets the interpreter go while it calls, so the
+        callback can finish and the pause returns.
+        """
         device, self.device = self.device, None
+        if device is None:
+            with self.lock:
+                self.chunks, self.at = [], 0
+            return
+        self.device = device                              # `stop` and the callback still want it
+        self.stop()                                       # four milliseconds of fade, not a cut
+        time.sleep(CHUNK / float(RATE) * 2.0)             # about the card's own buffer, so the fade is heard
+        self.device = None
         with self.lock:
             self.chunks, self.at = [], 0
-        if device is not None:
-            try:
-                device.pause(1)
-            except Exception:
-                pass
-            try:
-                device.close()
-            except Exception:
-                pass
+        try:
+            from .pad import sdl
+            library = sdl()
+            if library is not None:
+                library.SDL_PauseAudioDevice(ctypes.c_uint32(int(device.deviceid)), ctypes.c_int(1))
+        except Exception as exc:
+            log.debug('the speech card would not pause through SDL: %s', exc)
+        try:
+            device.close()
+        except Exception as exc:
+            log.debug('the speech card would not close: %s', exc)
 
     # --- what the voice says --------------------------------------------------------------------------
     def play(self, pcm: bytes) -> bool:

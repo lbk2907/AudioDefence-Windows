@@ -596,7 +596,14 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   back (`_to_windows`, the card kept from before the first render): without that, turning Modern audio
   output off left the voice speaking into memory nobody played, which is silence until the game restarts.
   `Speech.shutdown`, called before the engine's, stops the voice and closes the card, so a line still
-  waiting is not heard carrying on after the game has fallen silent.  Closing the game is all Python work -
+  waiting is not heard carrying on after the game has fallen silent.  Closing it goes through SDL itself
+  (`SDL_PauseAudioDevice` by ctypes) rather than through pygame: SDL waits for the audio callback to return
+  before it pauses, that callback is Python and wants the interpreter, and pygame's `pause` holds the
+  interpreter while it waits - so the game hung on the way out about two closes in three, with the reverb
+  bus (Python on an audio thread as well) holding the interpreter in the meantime.  ctypes lets the
+  interpreter go while it calls, which lets the callback finish.  The fade is played out first, about the
+  card's own buffer's worth, so the card is not cut off mid-waveform: that was the click heard as the game
+  closed.  Closing the game is all Python work -
   measured: the engine's own stop 63 ms, the speech card 27, `pygame.quit()` 43 - and the arena is mixed by
   Python on the audio thread, so with the music still playing it stuttered between the steps: the listener's
   gain goes to zero first (one call), and the rest happens in silence.  Shutdown touches only what was used:
