@@ -143,6 +143,29 @@ def _decode_now(path: str) -> tuple[np.ndarray, int]:
     return hit
 
 
+def lead_in(path: str, floor: float = 0.002, most: float = 0.25) -> float:
+    """PORT ADDITION: how long a file is silent before it starts, in seconds.
+
+    Some of the game's own recordings begin with a moment of nothing - the Machine Gun's shot has 133
+    milliseconds of it, the Grenade Launcher's 109 - which is heard as a gap between the trigger and the
+    bang.  Only a file the decoder already holds is measured; nothing is decoded here, since this is asked
+    on the way to playing a sound.  `most` is a cap: a file that is quiet for longer than that is left
+    alone, in case what looks like silence is the sound itself.
+    """
+    with _lock:
+        hit = _cache.get(path)
+    if hit is None:
+        return 0.0
+    data, rate = hit
+    if not rate or not len(data):
+        return 0.0
+    mono = data.mean(axis=1) if data.ndim > 1 else data
+    loud = np.abs(mono) > floor
+    if not loud.any():
+        return 0.0
+    return min(float(np.argmax(loud)) / float(rate), most)
+
+
 def forget(path: str) -> None:
     with _lock:
         _cache.pop(path, None)

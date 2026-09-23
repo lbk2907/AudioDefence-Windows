@@ -116,6 +116,9 @@ class S3DEngine:
             # the same gain the sound itself would use: dry sounds are gain * fade_gain * volume (_apply_gain)
             gain = float(sound.gain) * float(sound.fade_gain) * float(getattr(sound, 'volume', 1.0))
             self.al.alSourcef(src, oal.AL_GAIN, max(0.0, gain))
+            skip = float(getattr(sound, 'skip_to', 0.0))  # PORT ADDITION: and it starts where the sound does
+            if skip > 0.0 and float(getattr(sound, 'duration_s', 0.0)) > skip:
+                self.al.alSourcef(src, oal.AL_SEC_OFFSET, skip)
             self.al.alSourcePlay(src)
         except Exception:
             log.exception('could not play a copy of %s', getattr(sound, 'path', '?'))
@@ -525,6 +528,8 @@ class S3DSound:
         self._on_bus = False           # the source and its buffer live on the reverb bus device
         self._spatial = False
         self._last_offset = 0.0
+        #: PORT ADDITION: seconds to start into the file, for a recording that opens with silence
+        self.skip_to = 0.0
         self._paused = False
         self.generation = 0
         self._loading = False
@@ -546,6 +551,7 @@ class S3DSound:
         at once if this one is, from the decoder's cache, so its duration is right before it first plays.
         The playlist that owns this sound stops and unloads the copies along with it."""
         twin = S3DSound(self.engine, self.path)
+        twin.skip_to = self.skip_to                                 # PORT ADDITION: and starts where it does
         twin.spatialized = self.spatialized
         twin.preload = self.preload
         twin.unload_on_stop = self.unload_on_stop
@@ -753,6 +759,8 @@ class S3DSound:
         self.looping_flag = loop
         self.al.alSourcei(self._source, oal.AL_LOOPING, 1 if loop else 0)
         self.al.alSourceRewind(self._source)
+        if self.skip_to > 0.0 and self.duration_s > self.skip_to:   # PORT ADDITION: start where it starts
+            self.al.alSourcef(self._source, oal.AL_SEC_OFFSET, self.skip_to)
         self._apply_gain()
         if self._spatial:
             self.update_position()

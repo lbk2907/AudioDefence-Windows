@@ -492,6 +492,17 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   Triangle Delete, L1/R1 the tab arrows, L2/R2 Page Down/Up), and those key presses carry `pad`, so a key
   being captured in Settings -> Keyboard is cancelled by a controller button instead of taking the key it
   stands for.  SDL is asked (before pygame.init) to let PlayStation pads rumble over Bluetooth.
+* A gun's shot starts where the bang does, not where the file does (user request).  Some of the game's own
+  recordings open with a moment of nothing - the Machine Gun's `_fire_a` has 133 ms of it, the Grenade
+  Launcher's 109, the Bazooka's 62 - and `-[ADWeapon playSingleShootSound]` plays them from the top, so
+  every press of the trigger waits that out before it is heard.  Tapping the Machine Gun, which is how it is
+  fired, that silence is the gap between the shots.  The files are left as they are: `decoder.lead_in`
+  measures the silence once from what the decoder already holds, and `S3DSound.skip_to` starts the source
+  past it (`AL_SEC_OFFSET` before the play, in `_play_as_is`, in `copy` and in `play_copy_of`, so an
+  overlapping shot starts there too).  Only a weapon's `_fire_` sounds are given it (`weapon._start_at_the_
+  bang`), and only the silence: a recording that starts at once, like the Pistol's, is untouched, and a file
+  that is quiet for more than a quarter of a second is left alone in case the quiet is the sound itself.
+
 * Escape does nothing on the Endless screen while the cards are being dealt (user request).  The Back
   button is dimmed for those two seconds (`deactivate_buttons`), and so is Play in this port, but
   `-[ADViewController accessibilityPerformEscape]` 0x1000728e4 goes straight to `backButtonPressed` without

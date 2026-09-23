@@ -37,6 +37,28 @@ def _c_div(a: int, b: int) -> int:
     return q if (a >= 0) == (b >= 0) else -q
 
 
+#: PORT DIVERGENCE: a shot starts where the bang does (user request).  Some of the game's own recordings
+#: open with a moment of nothing - the Machine Gun's 133 milliseconds of it, the Grenade Launcher's 109,
+#: the Bazooka's 62 - and the original plays them from the top, so every tap of the trigger waits that out
+#: before it is heard.  Tapping the Machine Gun, which is what it is for, that silence is the gap between
+#: the shots.  The file is left alone: the sound is started past its own silence instead
+#: (S3DSound.skip_to), measured once from what the decoder already holds (decoder.lead_in).
+_LEAD_IN: dict = {}
+
+
+def _start_at_the_bang(sound) -> None:
+    """Have this shot start where the recording does, not where the file does."""
+    if sound is None or not sound.path:
+        return
+    lead = _LEAD_IN.get(sound.path)
+    if lead is None:
+        from ..s3d import decoder
+        if not decoder.is_cached(sound.path):             # not decoded yet: ask again next shot, rather
+            return                                        # than remember that it has no silence in it
+        lead = _LEAD_IN[sound.path] = decoder.lead_in(sound.path)
+    sound.skip_to = lead
+
+
 class Weapon:
     # -[ADWeapon initWithDictionary:] 0x100013f94
     def __init__(self, d: dict | None):
@@ -300,6 +322,7 @@ class Weapon:
                 candidates = pl.sounds_matching(lambda k: '_fire_' in k)
                 if all(c.playing for c in candidates):
                     fire = min(candidates, key=lambda c: c.duration - c.elapsed_time())
+                    _start_at_the_bang(fire)              # PORT DIVERGENCE: and so does the copy of it
                     if S3DEngine.engine().play_copy_of(fire):     # let this shot overlap the last one
                         if warning is not None:
                             warning.set_spatialized(False)
@@ -308,6 +331,7 @@ class Weapon:
                         return
                     break
             fire = pl.any_sound_containing('_fire_') if pl is not None else None
+            _start_at_the_bang(fire)                      # PORT DIVERGENCE: past the file's own silence
             if fire is None:
                 # DIVERGENCE: the original spins forever here when no "_fire_" sound exists.
                 log.warning('%s has no _fire_ sound', self.name)
