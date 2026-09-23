@@ -502,10 +502,19 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   already on its way to the card - 29 ms after 50 ms of speech, 59 after 200, **100 after 500**, growing
   the longer it has been talking - which for a player who interrupts at every row is most of what makes a
   voice feel slow.  With Modern audio output on, SAPI renders the line into an `SpMemoryStream` at the
-  engine's own rate and shape (44.1 kHz, stereo, 16 bit, so nothing is resampled; 160 to 220 times faster
-  than real time) and `SpeechAudio` plays it through a source of the game's own, filled by an
-  `AL_SOFT_callback_buffer` callback as the reverb bus is, `AL_DIRECT_CHANNELS_SOFT` so a voice is not put
-  through the HRTF.  Stopping is then dropping what has not been played, which is instant (measured: a line
+  card's own rate and shape (44.1 kHz, mono, 16 bit - a voice is mono, and stereo doubled every byte for a
+  copy of itself) and `SpeechAudio` plays it through an SDL audio device the speech opens for itself, as
+  `haptic_audio` does for a DualSense.  It is a device of its own on purpose: the engine is OpenAL, whose
+  current context belongs to the thread that set it and which the reverb bus moves between two devices as
+  it renders, so speech arriving from its own thread and touching any of that stops the game's sound dead -
+  which is what it did, the first time this was built on an engine source.  Two more things were measured
+  and fixed the same way.  A line is rendered in pieces (`_SapiThread.pieces`, the first short), so the
+  first sound comes 30 ms after the key rather than at the end of the whole line.  And the bytes are read
+  out of the stream with `IStream.RemoteRead` rather than asked for with `GetData`, which hands a million
+  samples over one COM element at a time with the interpreter held: 61 ms against 1 ms for a page of the
+  encyclopedia, and since the game mixes its own sound in Python on the audio thread (the reverb bus), 61 ms
+  of held interpreter is a gap in the arena.  With both, the longest the main thread waits while a page is
+  spoken is 2.4 ms.  Stopping is then dropping what has not been played, which is instant (measured: a line
   with 512,808 samples still to play is down to the 352 of its fade the moment the next line is asked for),
   with 4 ms of ramp so the cut is not a click.  A `generation` counter carries the interruption to the
   thread: a line whose generation has passed is dropped rather than spoken.  With the row off - or with no

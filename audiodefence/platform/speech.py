@@ -307,45 +307,102 @@ class _SapiThread(threading.Thread):
         if audio is not None:
             audio.SetState(_Sapi.SAS_RUN)
 
+    #: how long a piece of a line may be before it is split again: the first short, so speech starts at
+    #: once, and the rest longer, since they are made while the first is being heard.  Rendering a piece
+    #: holds the interpreter for as long as it takes (SAPI hands its bytes over through COM), and the
+    #: game's own sound is mixed by Python on the audio thread, so no piece may be a big one.
+    FIRST_PIECE, LATER_PIECES = 90, 240
+
+    @classmethod
+    def pieces(cls, text: str) -> list:
+        """The line in bits, split where a sentence ends, or a clause, or failing that a word."""
+        import re
+        parts = [p for p in re.split(r'(?<=[.!?:;])\s+', text.strip()) if p]
+        out: list = []
+        for part in parts:
+            while len(part) > cls.LATER_PIECES:           # a sentence longer than a piece: cut at a comma
+                cut = part.rfind(', ', 0, cls.LATER_PIECES)
+                if cut < 40:
+                    cut = part.rfind(' ', 0, cls.LATER_PIECES)
+                if cut < 40:
+                    cut = cls.LATER_PIECES
+                out.append(part[:cut + 1].strip())
+                part = part[cut + 1:].strip()
+            if out and len(out[-1]) + len(part) + 1 <= (cls.FIRST_PIECE if len(out) == 1
+                                                        else cls.LATER_PIECES):
+                out[-1] = '%s %s' % (out[-1], part)       # short sentences go together
+            else:
+                out.append(part)
+        return out or [text]
+
     def _speak(self, generation: int, body: str, flags: int, engine: bool) -> None:
         if generation < self.sapi.generation:             # interrupted before this one was reached
             return
         if engine and self._render(generation, body, flags):
             return
+        text, template = body
+        whole = template % text if template else text
         if flags & _Sapi.SVSF_PURGE:                      # Windows plays it: cut what it is playing first
             audio = self._audio_stream()
             if audio is not None:
                 audio.SetState(_Sapi.SAS_STOP)
-                self.voice.Speak(body, flags)
+                self.voice.Speak(whole, flags)
                 audio.SetState(_Sapi.SAS_RUN)
                 return
-        self.voice.Speak(body, flags)
+        self.voice.Speak(whole, flags)
 
     def _render(self, generation: int, body: str, flags: int) -> bool:
-        """Render into memory and hand it to the game's own source.  False if that cannot be done, and the
-        line goes to Windows instead."""
+        """Render into memory, a piece at a time, handing each to the card as it is made.  False if that
+        cannot be done at all, and the line goes to Windows instead."""
         from .speech_audio import SAPI_FORMAT, SpeechAudio
         audio = SpeechAudio.shared()
-        if not audio.available():
+        if audio.device is None:                          # opened on the game's thread, in speak()
             return False
+        text, template = body
+        flags = flags & ~(_Sapi.SVSF_ASYNC | _Sapi.SVSF_PURGE)   # rendered here, not played to the card
         try:
-            stream = self.client.CreateObject('SAPI.SpMemoryStream')
-            shape = stream.Format
-            shape.Type = SAPI_FORMAT
-            stream.Format = shape
-            self.voice.AudioOutputStream = stream
-            self.voice.Speak(body, flags & ~(_Sapi.SVSF_ASYNC | _Sapi.SVSF_PURGE))   # here, not to the card
-            pcm = bytes(stream.GetData())
+            for i, piece in enumerate(self.pieces(text)):
+                if generation < self.sapi.generation:     # interrupted: the rest of the line is not made
+                    return True
+                stream = self.client.CreateObject('SAPI.SpMemoryStream')
+                shape = stream.Format
+                shape.Type = SAPI_FORMAT
+                stream.Format = shape
+                self.voice.AudioOutputStream = stream
+                self.voice.Speak(template % piece if template else piece, flags)
+                pcm = self._bytes_of(stream)
+                if generation < self.sapi.generation:
+                    return True
+                audio.play(pcm)
         except Exception as exc:
             log.info('SAPI could not be rendered, so Windows will play it: %s', exc)
             self._to_windows()
             return False
         finally:
             self.audio = None                             # its output stream is ours now, not the card's
-        if generation < self.sapi.generation:             # interrupted while it was being made
-            return True
-        audio.play(pcm)
         return True
+
+    @staticmethod
+    def _bytes_of(stream) -> bytes:
+        """The rendered bytes, read out of the stream rather than asked for as an array.
+
+        GetData hands a million samples over one COM element at a time, with the interpreter held the whole
+        way: a page of the encyclopedia measured 61 ms that way and 1 ms read through IStream.  The game
+        mixes its own sound in Python on the audio thread (the reverb bus), so 61 ms of held interpreter is
+        a gap in the arena - which is what it sounded like.
+        """
+        try:
+            from comtypes.gen import SpeechLib
+            raw = stream.QueryInterface(SpeechLib.IStream)
+            size = int(raw.RemoteSeek(0, 2))              # STREAM_SEEK_END: where the rendering left off
+            if size <= 0:
+                return b''
+            raw.RemoteSeek(0, 0)
+            out = raw.RemoteRead(size)
+            return bytes(out[0] if isinstance(out, tuple) else out)
+        except Exception as exc:                          # no IStream here: the slow way rather than none
+            log.debug('speech read through IStream failed, using GetData: %s', exc)
+            return bytes(stream.GetData())
 
     def _to_windows(self) -> None:
         """Give the voice back to Windows, for when rendering has failed and the line must still be said."""
@@ -498,19 +555,20 @@ class _Sapi:
         pitch = self.config['pitch']
         boost = self.config['boost'] and self.boost_supported(self.config['voice'])
         if pitch or boost:
-            body = escape(text)
+            template = '%s'
             if boost:
-                body = '<rate speed="10">%s</rate>' % body
+                template = '<rate speed="10">%s</rate>' % template
             if pitch:
-                body = '<pitch absmiddle="%d">%s</pitch>' % (max(-10, min(10, pitch)), body)
+                template = '<pitch absmiddle="%d">%s</pitch>' % (max(-10, min(10, pitch)), template)
+            body = (escape(text), template)               # each piece of it is wrapped the same way
             flags |= self.SVSF_IS_XML
         else:
-            body, flags = text, flags | self.SVSF_IS_NOT_XML
-        engine = self.modern_audio()
+            body, flags = (text, None), flags | self.SVSF_IS_NOT_XML
+        from .speech_audio import SpeechAudio
+        engine = self.modern_audio() and SpeechAudio.shared().available()
         if interrupt:
             self.generation += 1
             if engine:                                    # cut here rather than wait for the thread to wake
-                from .speech_audio import SpeechAudio
                 SpeechAudio.shared().stop()
         self.worker().say(body, flags, engine, self.generation)
         return True
