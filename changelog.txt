@@ -24,6 +24,7 @@ Skipping the intro with Cross no longer presses Play as well, which started a ga
 Closing a weapon page and equipping a weapon click, like every other button in the armory.
 An alert no longer reads a stop that is already there - "Not enough Coins!. ... Endless Mode.. OK" is now read as it is written.
 Running the source without its packages now says which one is missing and how to install it, instead of handing you a traceback.
+Pausing while the Minigun power-up is firing now stops it. It fired on through the pause menu until its time ran out.
 
 26.09.22-2:
 You can turn with buttons on a game controller instead of a stick: the D-pad to begin with, and Settings, Joystick can move them.

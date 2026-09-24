@@ -865,6 +865,12 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   the armory anyway in the tail call at 0x0761b8 - so one press closed the weapon page *and* threw you out
   of the armory, skipping the list.  Back now matches Escape (`accessibility_perform_escape`): it closes the
   detail and leaves the cursor on the row it was opened from, and a second press leaves the armory.
+* A power-up in hand is held while the game is paused (user request).  `pauseGame` 0x10005b5fc stops the
+  timers and pauses the bricks and the ambience, and says nothing about a power-up, as it says nothing about
+  the weapon (`Weapon.pause`, the same divergence).  The Minigun's fire loops, so it went on firing through
+  the pause menu and only stopped when the game came back and its time ran out.  `PowerUp.pause` holds
+  whatever the power-up is playing and `resume` lets go of exactly those, so a second pause cannot forget
+  what the first is holding.
 * Being killed by a Berserk counts (user request).  `-[ADEnemy update:]`'s case 3 posts `PLAYER_DIED` at
   0x10005f16c and then attacks; case 8, the berserk charge, goes straight to `attack` at 0x10005f468 with no
   notification.  `ADInGameStats` learns of a death only from that notification, so the Berserk - the one

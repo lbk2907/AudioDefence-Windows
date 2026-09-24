@@ -208,15 +208,20 @@ class WeaponManager:
 
     # --- pausing (PORT ADDITION) ------------------------------------------------------------------
     def pause(self) -> None:
-        """Freeze the weapons with the rest of the game: see Weapon.pause."""
+        """Freeze the weapons and the power-up in hand with the rest of the game: see Weapon.pause and
+        PowerUp.pause."""
         for weapon in (self.current_weapon, self.melee_weapon):
             if weapon is not None:
                 weapon.pause()
+        if self._power_up is not None:
+            self._power_up.pause()
 
     def resume(self) -> None:
         for weapon in (self.current_weapon, self.melee_weapon):
             if weapon is not None:
                 weapon.resume()
+        if self._power_up is not None:
+            self._power_up.resume()
 
     # --- power-ups (always through the shared instance) ------------------------------------------
     @property

@@ -113,8 +113,39 @@ class PowerUp:
         self.playlist = None
         self.name = None
         self.type = kind
+        self.paused_sounds: list = []                     # what `pause` held, to be let go again
+        self.held = False
         if kind in self.NAMES:
             self.name = self.NAMES[kind]
+
+    def pause(self) -> None:
+        """Hold whatever this power-up is playing while the game is paused.
+
+        DIVERGENCE (user request): `pauseGame` 0x10005b5fc stops the timers and pauses the bricks and the
+        ambience, and says nothing about a power-up in hand - as it says nothing about the weapon
+        (`Weapon.pause`).  The Minigun's fire loops, so it went on firing through the pause menu and only
+        stopped when the game came back and its time ran out.
+        """
+        if self.held:                                     # already held: a second pause must not forget
+            return                                        # what the first one is holding
+        self.held = True
+        self.paused_sounds = []
+        if self.playlist is None:
+            return
+
+        def hold(sound):
+            if sound is not None and sound.playing:
+                sound.pause()
+                self.paused_sounds.append(sound)
+            return False
+
+        self.playlist.each(hold)
+
+    def resume(self) -> None:
+        self.held = False
+        for sound in self.paused_sounds:
+            sound.resume()
+        self.paused_sounds = []
 
     def preload(self) -> None:                            # 0x10001da24
         pass
