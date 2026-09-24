@@ -221,6 +221,10 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
 * The settings rows play `click_button` when pressed.  The original's accessible table is silent, but its
   sighted twin's rows are `ADButtonWithFont`s, which click (`-[ADButtonWithFont playSound]` 0x100073578) -
   and the port's categories are pressed like buttons, so they click like them.
+* An alert's buttons click too (user request).  `UIAlertView`'s buttons are the system's, not
+  `ADButtonWithFont`s, so the original's "Not enough Coins!" closes in silence; in the port the alert is a
+  screen of its own and its OK is the only thing on it, so pressing it sounds like pressing a button.  The
+  click comes after the button's action, where `-[ADButtonWithFont awakeFromNib]` 0x100072f7c puts it.
 * `-[ADAppDelegate startMenuMusic:]`'s sound monitor returns an undefined BOOL (a tail call into
   `objc_release`); the port keeps monitoring.
 * ARC deallocation side effects (`-[ADWeapon dealloc]` deactivating the weapon playlist, `-[ADPlayer dealloc]`)

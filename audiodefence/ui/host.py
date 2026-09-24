@@ -20,7 +20,21 @@ class AlertScreen(MenuScreen):
         """`buttons` are (label, action) pairs, or (label, action, hint) where a button needs saying more
         about - a PORT ADDITION: UIAlertView buttons have no hints."""
         super().__init__(host, title=joined([title, message]))
-        self.items = [MenuItem(button[0], (lambda a=button[1]: (host.pop_overlay(), a and a())),
+
+        def pressed(action):
+            """PORT ADDITION: an alert's button clicks like every other button in the game (user request).
+            UIAlertView's own buttons are silent, being the system's rather than `ADButtonWithFont`s, but
+            this is the only button on the screen and pressing it should sound like pressing one.  The
+            click comes after the action, as `-[ADButtonWithFont awakeFromNib]` 0x100072f7c puts it."""
+            def press():
+                from .accessibility import play_button_click   # here: accessibility imports this module
+                host.pop_overlay()
+                if action:
+                    action()
+                play_button_click()
+            return press
+
+        self.items = [MenuItem(button[0], pressed(button[1]),
                                hint=button[2] if len(button) > 2 else None) for button in buttons]
         self.back_action = lambda: host.pop_overlay()
 
