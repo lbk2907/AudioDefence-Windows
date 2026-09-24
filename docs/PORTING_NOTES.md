@@ -503,6 +503,14 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   its own instead (`S3DEngine.play_copy_of`), the way an overlapping shot already is in
   `-[ADWeapon playSingleShootSound]`.
 
+* The low-ammo loop sounds in short bursts too (user request).  `-[ADWeapon continuousStart]` 0x1000154a4
+  resolves the shot that starts the burst and then builds the "_warningloop" and sets its gain to 0,
+  whatever the clip holds.  `resolveShoot` 0x100015a1c does set that gain by what is left - but it ran
+  before the loop was built, so its setting lands on the loop from the burst before and is then overwritten
+  with 0.  Only the burst's *second* shot can raise it, and that one is a whole fire rate away, so the
+  Tactical Rifle (0.25 s) fired in taps never warned however little was left.  The loop now starts at the
+  level the clip has earned (`Weapon.running_low`, which is `resolveShoot`'s own test).
+
 * Running the clip out with the trigger held is answered (user request).  Two things were in the way.
   `-[ADWeapon update:]` 0x100014c8c plays the click first and stops the gun after it, so the "Reload"
   call-out began underneath the gun still firing; the gun is stopped first here.  And `playClickSound`

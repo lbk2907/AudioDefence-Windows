@@ -279,7 +279,13 @@ class Weapon:
             pl.any_sound_with_prefix(f'weapon_gun_{self.name}_warningloop')) if pl else None
         if self.continuous_warning is not None:
             self.continuous_warning.set_spatialized(False)
-            self.continuous_warning.set_gain(0.0)
+            # DIVERGENCE: 0x1000154a4 sets this to 0 whatever the clip holds (user request).  The shot that
+            # starts the burst is resolved above, and `resolveShoot` sets the warning's gain - but on the
+            # loop from the burst before, which this line then silences.  Only the *second* shot of a burst
+            # can raise it, and that one is a whole fire rate away, so firing the Tactical Rifle in bursts
+            # shorter than its 0.25 s never warns however little is left in the clip.  The loop starts at
+            # the level the clip has earned instead.
+            self.continuous_warning.set_gain(0.6 if self.running_low() else 0.0)
             self.continuous_warning.play(True)
 
     def continuous_stop(self) -> None:                    # 0x1000157f8
@@ -330,6 +336,11 @@ class Weapon:
         tail.set_gain(0.6)
         tail.play(False)
 
+    def running_low(self) -> bool:
+        """Whether the clip is down to its last fifth, which is what the warning loop answers to
+        (`-[ADWeapon resolveShoot]` 0x100015a1c)."""
+        return float(self.bullets_in_clip) <= float(self.capacity) * 0.2
+
     def resolve_shoot(self) -> bool:                      # 0x100015a1c
         if self.bullets_in_clip < 1 or self.bullets_total < 1:
             return False
@@ -339,11 +350,10 @@ class Weapon:
         if GameModifiers.shared().rustyWeapons:
             if crand.c_mod(crand.rand(), 100) == 1:
                 self.bullets_in_clip = 0
-        low = float(self.bullets_in_clip) <= float(self.capacity) * 0.2
         if self.continuous_sound is not None:
             self.continuous_sound.set_gain(0.6)
         if self.continuous_warning is not None:
-            self.continuous_warning.set_gain(0.6 if low else 0.0)
+            self.continuous_warning.set_gain(0.6 if self.running_low() else 0.0)
         if self.weapon_manager is not None:
             self.weapon_manager.shot()
         return True
