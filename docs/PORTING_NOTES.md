@@ -769,7 +769,13 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   button turns at the keyboard's speed, being down or up with nothing in between, and goes through the
   same `GameplayScreen.press` the turn keys do; while one is held it decides, and the sticks have it back
   as soon as it is let go.  `_turn_keys` maps what is held - a key code, or a pad button's source - to the
-  action it pressed, so the last one pressed decides whichever it came from.
+  action it pressed, so the last one pressed decides whichever it came from.  Under Gesture the D-pad's
+  other two directions switch weapon and reload (user request), beside the stick flicks that already did -
+  `PAD_DEFAULTS` gesture lists for `next_weapon` and `reload`.  Bindings that grow like that do not reach a
+  profile already written to keys.json, since a stored list replaces the default outright, so a stored list
+  that is still exactly what the default used to be is taken as untouched and given the new one
+  (`PAD_WAS`); a list the player has changed is left as they left it.  Button mode is not touched: there
+  the shoulder and the trigger do both, and the request was for Gesture.
 * A fresh profile plays in **Gesture** (user request).  `-[ADGameParameters lastButtonMode]` 0x1000a3aec
   answers `UIAccessibilityIsVoiceOverRunning()` when `buttonMode` is not stored, which in the port is
   always true and so put every new player in Button mode; `GameParameters.DEFAULT_BUTTON_MODE` is False

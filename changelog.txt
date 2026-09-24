@@ -16,6 +16,7 @@ Turning Modern audio output off takes hold the moment you press it. It waited fo
 If the sound device the speech is using goes away while you play - headphones unplugged, a controller with a speaker in it switched off, Windows moving to another one - the game opens another one and carries on. It used to lose the voice for the rest of the game, and with Modern audio output on that is every word it says.
 In Settings, Speech, the Speech output row and the SAPI 5 voice row open a list instead of stepping. The cursor starts on the one you are using, Enter takes the one you land on, and Escape leaves it as it was. Stepping meant hearing every choice on the way past, which for the voices is however many your machine has.
 Opening a weapon from the Loadout tab clicks, the way opening one in the Weapons tab or a power-up already did.
+In Gesture mode, D-pad up switches weapon and D-pad down reloads, beside the stick flicks that already did - the D-pad already turned with left and right. If you have never changed those two bindings yourself, your controller gets them; if you have, yours are left alone.
 
 26.09.22-2:
 You can turn with buttons on a game controller instead of a stick: the D-pad, left and right, to begin with. Settings, Joystick has them as Alternate turn left and Alternate turn right, and you can set them to any buttons you like. They turn at the same speed as the keyboard, and the sticks keep turning as they always did. When the tutorial names your controller, the aiming line names them too, by whatever you have set them to.

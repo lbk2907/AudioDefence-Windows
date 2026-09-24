@@ -398,8 +398,8 @@ In a game:
 | D-pad left / right | turn, at the same speed as the arrow keys (Alternate turn left / right — the only turning you can rebind) |
 | R2 | fire |
 | R1 | melee |
-| L1, or a stick flicked up under Gesture | next weapon |
-| L2, or a stick flicked down under Gesture | reload |
+| L1, or a stick flicked up or D-pad up under Gesture | next weapon |
+| L2, or a stick flicked down or D-pad down under Gesture | reload |
 | Options | pause, and Options again to resume |
 | Cross (A) | skip the narration |
 | Square | read the challenge timer |
@@ -653,6 +653,8 @@ nothing, or says something no keyboard player can act on.
   weapon as "costs : 0 coins".
 - **The armory's Back button takes one step**, closing the weapon page and leaving you on the row you opened,
   instead of closing the page and the armory together.
+- **Opening a weapon from the Loadout tab clicks**, the way opening one in the Weapons tab, or a power-up,
+  already did. The loadout was the one way into a weapon page the original left silent.
 - Zombiepedia's preview button, its Next and Previous buttons, and the armory's upgrade button were
   unlabelled, double-labelled or silent about their price. Four strings written in capitals are spoken in
   sentence case; the screen keeps the capitals.
