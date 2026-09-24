@@ -115,6 +115,7 @@ def main(argv=None) -> int:
         pass
     finally:
         log.info('shutting down')
+        closing = time.perf_counter()
         try:
             try:
                 # PORT ADDITION: silence the game before taking it apart.  Shutting the engine down, closing
@@ -137,6 +138,9 @@ def main(argv=None) -> int:
             engine.shutdown()
         finally:
             pygame.quit()
+            # PORT ADDITION: the last line says how long the closing took, so "it was slow to close" can be
+            # answered from a log instead of a stopwatch.  What is left after it is the interpreter itself.
+            log.info('closed in %d ms', (time.perf_counter() - closing) * 1000.0)
     return 0
 
 

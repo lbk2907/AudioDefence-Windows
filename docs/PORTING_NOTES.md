@@ -640,7 +640,9 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   closed.  Closing the game is all Python work -
   measured: the engine's own stop 63 ms, the speech card 27, `pygame.quit()` 43 - and the arena is mixed by
   Python on the audio thread, so with the music still playing it stuttered between the steps: the listener's
-  gain goes to zero first (one call), and the rest happens in silence.  Shutdown touches only what was used:
+  gain goes to zero first (one call), and the rest happens in silence.  The last line of the log says how long the closing took (`closed in N ms`, counted from the `shutting
+  down` line), so a report of a slow close can be answered from a log rather than a stopwatch; what happens
+  after it is the interpreter's own teardown.  Shutdown touches only what was used:
   `Speech.readers` builds Prism on being asked for, and building it to tell it to stop took 80 ms.  Control stops the speech wherever it
   is pressed (`ScreenManager.handle_event`, user request), as it does in a screen reader; the key still
   reaches the screen, since it is also the melee key and the menus' first-and-last modifier.  In the menus
