@@ -1002,8 +1002,13 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   "Enter" and "Numpad Enter" here, the arrows are "Left Arrow" and so on, and space is "Spacebar".
 * PORT ADDITION: the one defaults file is split three ways - `save.json` (progress: coins, diamonds,
   weapons, power-ups, missions, challenge data and the four stats blocks), `settings.json` (control scheme,
-  button mode, sensitivity, menu arrows, cursor memory, tutorial text, the update check, a skipped update and
-  the menu music volume) and `keys.json` (the key bindings, and the joystick later).  The game reaches all three through one `UserDefaults.standard()`, which routes each key by name.
+  button mode, sensitivity, menu arrows, cursor memory, tutorial text, the update check, a skipped update,
+  the menu music volume, the announcer and the game's own gain) and `keys.json` (the key bindings, and the
+  joystick later).  `announcer` and `masterGain` are the original's keys and went with the progress at
+  first, being neither named in `SETTINGS_KEYS` nor new; they are settings, so they were named on 2026-09-24
+  at the user's request.  A value already written to a player's `save.json` is left there and ignored, and
+  both start at their defaults once - the announcer on, the gain 1.0 - which is what the user asked for
+  rather than a migration.  The game reaches all three through one `UserDefaults.standard()`, which routes each key by name.
   the figure at 0x0d129c from everything before the first dot of the number's `stringValue`, so a weapon
   that has never been fired (`shotsHit` / `shotsFired` = 0 / 0, which is nan) is read out as
   "accuracy, nan percent", and a real figure is cut at the decimal point - 66.6 per cent announced as 66.

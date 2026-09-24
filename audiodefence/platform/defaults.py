@@ -21,12 +21,16 @@ from .. import paths
 #: so that progress, preferences and input each live in a file of their own - the key bindings in particular
 #: are about to be joined by joystick bindings, and nobody wants those in the middle of a save.
 #: Keys not named here are progress and go to save.json, which is the safe default for anything new.
+#: `announcer` and `masterGain` are the original's own keys and went with the progress at first, being
+#: neither named here nor new.  They are settings - the Announcer row is in Settings -> Sound - so they are
+#: named now (user request), which means the value in an existing save.json is left where it is and ignored,
+#: and both start at their defaults once: the announcer on, the gain 1.0.
 SETTINGS_KEYS = frozenset({'buttonMode', 'controlScheme', 'sensivity', 'menuAxis', 'debugMapVisible',
                           'tutorialText', 'rememberFocus', 'checkUpdates', 'skippedUpdate',
                           'menuMusicVolume', 'vibration', 'triggerEffects', 'keyNames',
                           'keyNamesController', 'speechOutput', 'fineHaptics', 'sapiVoice', 'sapiRate',
                           'sapiRateBoost',
-                          'sapiPitch', 'sapiVolume', 'sapiModernAudio'})
+                          'sapiPitch', 'sapiVolume', 'sapiModernAudio', 'announcer', 'masterGain'})
 INPUT_KEYS = frozenset({'keymap', 'padmap', 'padmaps'})
 
 
