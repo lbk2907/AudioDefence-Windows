@@ -230,6 +230,9 @@ class MainMenuScreen(ViewControllerScreen):
 class PlayMenuScreen(ViewControllerScreen):
     """ADPlayMenuViewController."""
     page_title = 'Play'
+    #: the coins and the diamonds belong to what is under this menu - challenge, endless, whatever is added
+    #: later - and not to the choice between them (user request; StatusBar._wanted)
+    shows_currencies = False
 
     def __init__(self, host, should_animate: bool = False):   # initWithNibName:bundle:shouldAnimate: 0x1000aafe8
         super().__init__(host)

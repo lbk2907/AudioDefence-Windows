@@ -17,7 +17,7 @@ In Settings, Speech, the Speech output row and the SAPI 5 voice row open a list 
 Opening a weapon from the Loadout tab clicks, the way the other tabs already did.
 In Gesture mode, D-pad up switches weapon and D-pad down reloads, beside the stick flicks that already did.
 A power-up's page shows your coins and diamonds, says which level you are on, and its back button says what it closes.
-Your coins and diamonds are shown in the Play menus and the screens under them, and nowhere else.
+Your coins and diamonds are shown in the menus under Play - challenge, endless, the armory - and nowhere else.
 
 26.09.22-2:
 You can turn with buttons on a game controller instead of a stick: the D-pad to begin with, and Settings, Joystick can move them.
