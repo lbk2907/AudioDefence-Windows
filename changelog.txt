@@ -1,32 +1,25 @@
 unrelease:
 The game runs on the Mac too, in its own build on the same release. It speaks through VoiceOver, or through the system voice when VoiceOver is off.
-SAPI 5 stops the moment you interrupt it, and no longer holds the game up while it speaks. Settings, Speech has a Use modern output row for it, on by default.
+SAPI 5 answers as fast as a screen reader does: it starts sooner, stops the moment you interrupt it, and no longer holds the game up while it speaks. Settings, Speech has a Use modern output row for it, on by default, and turning it on or off takes hold at once.
 Press Control to stop whatever is being read out, in the menus or in a game.
 On the Endless screen you can no longer leave while the cards are being dealt.
-Guns are heard the moment you press, and the moment you let go.
-The Minigun power-up is heard for as long as it fires, and a power-up you are holding stops when you die.
+Guns are heard the moment you press and the moment you let go, and tapping the trigger no longer cuts the gun's wind-down short.
+The Minigun power-up is heard for as long as it fires, and a power-up you are holding stops when you die or when you pause. It fired on through the pause menu until its time ran out.
 A gun that is still firing stops when you switch weapon or when you die.
-When you empty the clip, the gun stops before the Reload call-out, and the call-out is always said.
-A gun with no empty click of its own answers with its own warning instead of saying nothing.
-Tapping the trigger no longer cuts the gun's wind-down short.
+When you empty the clip, the gun stops before the Reload call-out and the call-out is always said. A gun with no empty click of its own answers with its own warning instead of saying nothing.
+A gun running low on ammo keeps warning you until you reload, instead of only while you hold the trigger down. Firing in short bursts, the warning was never heard at all.
 The game closes properly when SAPI 5 is what speaks.
-SAPI 5 starts talking sooner, and answers as fast as a screen reader does.
-Turning Use modern output on or off takes hold at once, and cuts whatever was being said.
 If the sound device the speech is using goes away while you play, the game carries on with another one.
 In Settings, Speech, the Speech output row and the SAPI 5 voice row open a list to choose from instead of stepping.
-Opening a weapon from the Loadout tab clicks, the way the other tabs already did.
+Buttons that were silent now click: opening a weapon from the Loadout tab, closing a weapon page, equipping a weapon, and the OK on a message like Not enough Coins.
 In Gesture mode, D-pad up switches weapon and D-pad down reloads, beside the stick flicks that already did.
 A power-up's page shows your coins and diamonds, says which level you are on, and its back button says what it closes.
 Your coins and diamonds are shown in the menus under Play, whichever mode you are in, and nowhere else.
 The Announcer switch and the game's volume are kept with your other settings now, not with your progress. Both start at their default once, and everything else is as you left it.
 Being killed by a Berserk counts. Its own tally stayed at zero however many times it got you, and your Deaths total missed those too.
 Skipping the intro with Cross no longer presses Play as well, which started a game you did not ask for.
-Closing a weapon page and equipping a weapon click, like every other button in the armory.
 An alert no longer reads a stop that is already there - "Not enough Coins!. ... Endless Mode.. OK" is now read as it is written.
 Running the source without its packages now says which one is missing and how to install it, instead of handing you a traceback.
-Pausing while the Minigun power-up is firing now stops it. It fired on through the pause menu until its time ran out.
-The OK button on a message like Not enough Coins clicks, like every other button.
-A gun running low on ammo keeps warning you until you reload, instead of only while you hold the trigger down. Firing in short bursts, the warning was never heard at all.
 
 26.09.22-2:
 You can turn with buttons on a game controller instead of a stick: the D-pad to begin with, and Settings, Joystick can move them.
