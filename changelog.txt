@@ -26,7 +26,7 @@ An alert no longer reads a stop that is already there - "Not enough Coins!. ... 
 Running the source without its packages now says which one is missing and how to install it, instead of handing you a traceback.
 Pausing while the Minigun power-up is firing now stops it. It fired on through the pause menu until its time ran out.
 The OK button on a message like Not enough Coins clicks, like every other button.
-A gun running low on ammo warns you when you fire in short bursts, not only when you hold the trigger down.
+A gun running low on ammo keeps warning you until you reload, instead of only while you hold the trigger down. Firing in short bursts, the warning was never heard at all.
 
 26.09.22-2:
 You can turn with buttons on a game controller instead of a stick: the D-pad to begin with, and Settings, Joystick can move them.

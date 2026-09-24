@@ -188,6 +188,7 @@ class Weapon:
         now = ca_current_media_time()
         previous = self.previous_tick_time
         self.previous_tick_time = ca_current_media_time()
+        self.update_low_ammo_warning()                    # PORT ADDITION: it lives with the clip now
         st = self._state
         if st == 0:
             if self.continuous_sound is not None and self.continuous_sound.playing:
@@ -210,8 +211,7 @@ class Weapon:
                     # follow, and wrong for the one moment the player needs to be told (user request).
                     if self.continuous_sound is not None:
                         self.continuous_sound.stop()
-                    if self.continuous_warning is not None:
-                        self.continuous_warning.stop()
+                    self.stop_low_ammo_warning()
                     self.play_click_sound(announce=True)
                     self.set_state(5)
             self.fire_rate_timer = self.fire_rate_timer + dt
@@ -220,8 +220,6 @@ class Weapon:
             if self.time_in_state + self.time_in_continous > 0.2:
                 if self.continuous_sound is not None:
                     self.continuous_sound.stop()
-                if self.continuous_warning is not None:
-                    self.continuous_warning.stop()
                 self.change_state(0)
                 self.play_continuous_tail()
         elif st == 5:
@@ -275,25 +273,12 @@ class Weapon:
             self.continuous_sound.set_spatialized(False)
             self.continuous_sound.set_gain(0.6)
             self.continuous_sound.play(True)
-        self.continuous_warning = _at_the_sound(
-            pl.any_sound_with_prefix(f'weapon_gun_{self.name}_warningloop')) if pl else None
-        if self.continuous_warning is not None:
-            self.continuous_warning.set_spatialized(False)
-            # DIVERGENCE: 0x1000154a4 sets this to 0 whatever the clip holds (user request).  The shot that
-            # starts the burst is resolved above, and `resolveShoot` sets the warning's gain - but on the
-            # loop from the burst before, which this line then silences.  Only the *second* shot of a burst
-            # can raise it, and that one is a whole fire rate away, so firing the Tactical Rifle in bursts
-            # shorter than its 0.25 s never warns however little is left in the clip.  The loop starts at
-            # the level the clip has earned instead.
-            self.continuous_warning.set_gain(0.6 if self.running_low() else 0.0)
-            self.continuous_warning.play(True)
+        self.update_low_ammo_warning()                    # due from this shot, if the clip is low enough
 
     def continuous_stop(self) -> None:                    # 0x1000157f8
         self.stop_empty_loop()                            # PORT ADDITION: let go, and the warning stops
         if self.continuous_sound is not None:
             self.continuous_sound.stop()
-        if self.continuous_warning is not None:
-            self.continuous_warning.stop()
         if self._state == 3:
             self.change_state(4)
         elif self._state == 5:
@@ -312,8 +297,7 @@ class Weapon:
         self.stop_empty_loop()
         if self.continuous_sound is not None:
             self.continuous_sound.stop()
-        if self.continuous_warning is not None:
-            self.continuous_warning.stop()
+        self.stop_low_ammo_warning()
         if self._state in (3, 4, 5):
             self.play_continuous_tail()                   # the gun spins down, as it would have
         self.set_state(0)
@@ -341,6 +325,41 @@ class Weapon:
         (`-[ADWeapon resolveShoot]` 0x100015a1c)."""
         return float(self.bullets_in_clip) <= float(self.capacity) * 0.2
 
+    def update_low_ammo_warning(self) -> None:
+        """DIVERGENCE: the low-ammo loop sounds for as long as the clip is low (user request).
+
+        `continuousStart` 0x1000154a4 starts it with the burst and `continuousStop` 0x1000157f8 stops it
+        with the burst, so it is only ever heard *underneath* the gun - and over a burst it is 12 dB
+        quieter than the gun's own "_conti" loop, which is playing at the same instant.  Held down that
+        still works, because the beeps keep coming and the ear picks the rhythm out; fired in taps it is
+        one beep under one shot, and it is not heard at all.
+
+        It lives with the clip instead: it starts when the clip is down to its last fifth and keeps beeping
+        between bursts, where nothing is over it, until the gun is reloaded, run dry, put away, or the
+        player dies.
+        """
+        wanted = (self.continuous_fire and self.playlist is not None
+                  and self._state not in (1, 6, 7, 8)   # switching, or somewhere in a reload
+                  and self.bullets_in_clip > 0 and self.running_low())
+        if not wanted:
+            self.stop_low_ammo_warning()
+            return
+        if self.continuous_warning is not None:
+            return
+        self.continuous_warning = _at_the_sound(
+            self.playlist.any_sound_with_prefix(f'weapon_gun_{self.name}_warningloop'))
+        if self.continuous_warning is None:
+            return
+        self.continuous_warning.set_spatialized(False)
+        self.continuous_warning.set_gain(0.6)
+        self.continuous_warning.play(True)
+
+    def stop_low_ammo_warning(self) -> None:
+        """Let the loop go and forget it; `update_low_ammo_warning` starts a new one when one is due."""
+        if self.continuous_warning is not None:
+            self.continuous_warning.stop()
+            self.continuous_warning = None
+
     def resolve_shoot(self) -> bool:                      # 0x100015a1c
         if self.bullets_in_clip < 1 or self.bullets_total < 1:
             return False
@@ -352,8 +371,6 @@ class Weapon:
                 self.bullets_in_clip = 0
         if self.continuous_sound is not None:
             self.continuous_sound.set_gain(0.6)
-        if self.continuous_warning is not None:
-            self.continuous_warning.set_gain(0.6 if self.running_low() else 0.0)
         if self.weapon_manager is not None:
             self.weapon_manager.shot()
         return True
@@ -560,8 +577,7 @@ class Weapon:
     def clean(self) -> None:                              # 0x100016a2c
         if self.continuous_sound is not None:
             self.continuous_sound.stop()
-        if self.continuous_warning is not None:
-            self.continuous_warning.stop()
+        self.stop_low_ammo_warning()
 
     def dealloc(self) -> None:                            # 0x100016a78 (called where ARC would release it)
         log.info('Dealloc weapon')
