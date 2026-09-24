@@ -58,3 +58,14 @@ file, **at the end of that block** - it reads in the order things were done.
 Tests are written for the change at hand and are not kept in the repository.  Use a scratch profile - point
 `APPDATA` at a temporary folder - so a test never touches a player's save, and silence the listener
 (`engine.al.alListenerf(oal.AL_GAIN, 0.0)`) so a test run is not heard.
+
+**Test a thing once.**  A check that has passed for code nobody has touched since will pass again, and
+running it again costs the time it takes and says nothing.  So:
+
+* Test what the change touches, and nothing else.  The shield death sound is not evidence about the speech
+  card.
+* Do not rebuild a check that has just run to prove the same thing again.  Two passes over one change means
+  the first one was not trusted, and the answer to that is a better check, not a second one.
+* Run it again only when what it covers has changed underneath it - a refactor across the same path, a fix
+  on top of the fix.  Say which change made it worth running again.
+* A smoke run of the real game is worth one pass at the end of a piece of work, not one per edit.
