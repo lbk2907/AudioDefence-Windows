@@ -589,10 +589,13 @@ already had.
 
 The port is written method by method against the original's arm64 disassembly, and the rule it follows is to
 copy what the game does rather than what it ought to do — its bugs included. Every place it departs from
-that is listed below, and `docs/PORTING_NOTES.md` carries the same list with the address of the method each
-one came from, so any of them can be checked against the binary or put back.
+that is written down in `docs/PORTING_NOTES.md`, with the address of the method it came from, so any of them
+can be checked against the binary or put back. Listed below are the ones you would notice while playing; the
+rest are internal — analytics that only log locally, a sanity check that only printed, an undefined return
+value nothing reads.
 
-There are **119 divergences** and **15 original quirks kept on purpose**.
+There are **119 divergences** and **15 original quirks kept on purpose** in the notes, of which 71 are
+listed here.
 
 ### 1. Windows standing in for a phone
 
