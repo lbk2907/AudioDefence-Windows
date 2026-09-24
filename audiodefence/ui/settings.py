@@ -301,7 +301,8 @@ class ControlSchemePanel:
         self.reload_data()
         rows = [row for row in self.table_view.children if row.traits == CELL]
         on = next((row for row in rows if row.selected), rows[0] if rows else None)
-        self.screen.post_screen_changed(on, '%s. %d to choose from.' % (title, len(rows)))
+        # no full stop at the end: the prefix is joined to the row with one (`_apply_pending_focus`)
+        self.screen.post_screen_changed(on, '%s. %d to choose from' % (title, len(rows)))
 
     def _load_choices(self) -> None:
         _title, options, current, _apply = self.choosing

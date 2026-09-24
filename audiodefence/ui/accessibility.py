@@ -403,7 +403,8 @@ class AccessibleScreen(Screen):
 
     def post_screen_changed(self, element: View | None, prefix: str | None = None) -> None:
         # UIAccessibilityScreenChangedNotification.  PORT ADDITION: ``prefix`` names what the player just
-        # opened - a tab, a category - so it is heard before the element VoiceOver lands on.
+        # opened - a tab, a category - so it is heard before the element VoiceOver lands on.  It is joined
+        # to that element with a full stop, so it does not end with one of its own.
         self._screen_changed = True
         self._pending_focus = (element,)
         self._pending_prefix = prefix
