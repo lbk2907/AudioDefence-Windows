@@ -571,7 +571,7 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   thing to sit through.  `back_button_pressed` holds as well, for anything else that might reach it.
 
 * PORT ADDITION: SAPI 5 is spoken on a thread of its own, and the game plays it rather than Windows
-  (`platform/speech_audio.py`, `speech._SapiThread`; Settings -> Speech -> **Modern audio output**, on by
+  (`platform/speech_audio.py`, `speech._SapiThread`; Settings -> Speech -> **Use modern output**, on by
   default, `sapiModernAudio`).  Two things were measured on the user's machine and both are fixed here.
   Every SAPI call costs the thread that makes it - 10 ms to hand over a line, 26 to 30 ms when it cuts off
   the one before, up to 50 ms to stop - which on the main thread is a stutter in the arena each time a row
@@ -579,7 +579,7 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   SAPI hands its audio to Windows, which buffers it: asked to stop, the voice keeps talking for what is
   already on its way to the card - 29 ms after 50 ms of speech, 59 after 200, **100 after 500**, growing
   the longer it has been talking - which for a player who interrupts at every row is most of what makes a
-  voice feel slow.  With Modern audio output on, SAPI is given a stream of the game's own as its sound card
+  voice feel slow.  With the row on, SAPI is given a stream of the game's own as its sound card
   (`platform/speech_stream.py`, an `ISpAudio` handed to `ISpVoice::SetOutput`) and writes the voice into it
   as it is synthesised, in pieces of about a tenth of a second, at the card's own rate and shape (44.1 kHz,
   mono, 16 bit - a voice is mono, and stereo doubled every byte for a copy of itself); `SpeechAudio` plays

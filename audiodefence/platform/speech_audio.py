@@ -17,8 +17,8 @@ own thread and touching any of that stops the game's sound dead.  Nothing here t
 speech device is opened, filled and closed on its own, and the worst it can do is fall silent.
 
 NVDA solves the same problem the same way - its own player, not the app's - and calls it "modern audio
-output"; Settings -> Speech has a row of that name, since NVDA's players know it.  None of NVDA's code is
-here: it streams through an ISpAudio object of its own into its WASAPI player, where this renders to memory
+output"; Settings -> Speech has **Use modern output** for it, which is the same idea in fewer words.  None
+of NVDA's code is here: it streams through an ISpAudio object of its own into its WASAPI player, where this renders to memory
 through SAPI's documented stream and plays it through SDL.  With the row off, or with no device to be had,
 SAPI speaks to Windows as it always did (speech.py).
 """
@@ -147,7 +147,7 @@ class SpeechAudio:
         A sound device can go while the game is running: headphones unplugged, a controller with a speaker
         in it dropping off, Windows moving to another one.  SDL does not tell us - it simply stops asking
         for sound - so with nothing watching, the speech falls silent for the rest of the game, and with
-        Modern audio output on that is all of the speech.  NVDA's own player copes with this; none of its
+        the row on that is all of the speech.  NVDA's own player copes with this; none of its
         code is here, only the same care.
 
         Asked two ways: what SDL says the device is doing, and, failing that, whether it has asked us for

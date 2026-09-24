@@ -281,7 +281,7 @@ class GameParameters:
         self.defaults.set_bool(bool(value), 'fineHaptics')
         self.defaults.synchronize()
 
-    #: PORT ADDITION: Settings -> Speech -> Modern audio output: whether the game plays what SAPI 5 says
+    #: PORT ADDITION: Settings -> Speech -> Use modern output: whether the game plays what SAPI 5 says
     #: through its own sound (platform/speech_audio.py), where a line stops the instant it is interrupted,
     #: or hands it to Windows as it always did, where what is already buffered plays on.  On by default, and
     #: the name is NVDA's, whose players know it from their own settings.

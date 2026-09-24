@@ -1,6 +1,6 @@
 unrelease:
 The game runs on the Mac too, in its own build on the same release. It speaks through VoiceOver, or through the system voice when VoiceOver is off.
-SAPI 5 stops the moment you interrupt it, and no longer holds the game up while it speaks. Settings, Speech has a Modern audio output row for it, on by default.
+SAPI 5 stops the moment you interrupt it, and no longer holds the game up while it speaks. Settings, Speech has a Use modern output row for it, on by default.
 Press Control to stop whatever is being read out, in the menus or in a game.
 On the Endless screen you can no longer leave while the cards are being dealt.
 Guns are heard the moment you press, and the moment you let go.
@@ -11,7 +11,7 @@ A gun with no empty click of its own answers with its own warning instead of say
 Tapping the trigger no longer cuts the gun's wind-down short.
 The game closes properly when SAPI 5 is what speaks.
 SAPI 5 starts talking sooner, and answers as fast as a screen reader does.
-Turning Modern audio output on or off takes hold at once, and cuts whatever was being said.
+Turning Use modern output on or off takes hold at once, and cuts whatever was being said.
 If the sound device the speech is using goes away while you play, the game carries on with another one.
 In Settings, Speech, the Speech output row and the SAPI 5 voice row open a list to choose from instead of stepping.
 Opening a weapon from the Loadout tab clicks, the way the other tabs already did.

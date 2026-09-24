@@ -278,7 +278,7 @@ class _SapiThread(threading.Thread):
                     self._to_windows()                    # the card back before the stream is let go of
                     self.sink = None
                     return
-                if command[0] == 'windows':               # Modern audio output was turned off just now
+                if command[0] == 'windows':               # the row was turned off just now
                     self._to_windows()
                     continue
                 if command[0] == 'configure':
@@ -358,7 +358,7 @@ class _SapiThread(threading.Thread):
             return
         if engine and self._render(generation, body, flags):
             return
-        self._to_windows()                                # Modern audio output was turned off: give it back
+        self._to_windows()                                # the row was turned off: give the card back
         text, template = body
         whole = template % text if template else text
         if flags & _Sapi.SVSF_PURGE:                      # Windows plays it: cut what it is playing first
@@ -376,7 +376,7 @@ class _SapiThread(threading.Thread):
 
     def _to_the_game(self) -> bool:
         """Make the game's own stream the voice's output.  Once, and then left alone until something takes
-        the voice back: turning Modern audio output off does, and so does the way out."""
+        the voice back: turning the row off does, and so does the way out."""
         if self.streaming:
             return True
         from . import speech_stream
@@ -641,7 +641,7 @@ class _Sapi:
 
     @staticmethod
     def modern_audio() -> bool:
-        """Settings -> Speech -> Modern audio output: whether the game plays SAPI 5 itself."""
+        """Settings -> Speech -> Use modern output: whether the game plays SAPI 5 itself."""
         from ..game.parameters import GameParameters
         return GameParameters.shared().modern_audio()
 
@@ -665,14 +665,14 @@ class _Sapi:
         engine = self.modern_audio()                      # the card is opened by the thread, not here
         if interrupt:
             self.generation += 1
-            # cut here rather than wait for the thread to wake, and whichever way Modern audio output is set
+            # cut here rather than wait for the thread to wake, and whichever way the row is set
             # now: what is playing may have been started the other way, and it is still playing.
             SpeechAudio.shared().stop()
         self.worker().say(body, flags, engine, self.generation)
         return True
 
     def modern_audio_changed(self) -> None:
-        """PORT ADDITION: the Modern audio output row was pressed.
+        """PORT ADDITION: Settings -> Speech -> Use modern output was pressed.
 
         Turning it off hands the voice back to Windows now, rather than whenever the next line happens to
         be spoken: the line that says it has been turned off is itself interrupted often enough - by the
@@ -847,7 +847,7 @@ class Speech:
             log.debug('a screen reader would not stop on the way out')
 
     def modern_audio_changed(self) -> None:
-        """PORT ADDITION: the Modern audio output row was pressed (user request).  Only what has already
+        """PORT ADDITION: Settings -> Speech -> Use modern output was pressed (user request).  Only what
         been built is told: a game that has never spoken through SAPI has nothing to hand back."""
         if self._sapi is not None:
             self._sapi.modern_audio_changed()

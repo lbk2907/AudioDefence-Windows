@@ -1,6 +1,6 @@
 """PORT ADDITION: SAPI writes its sound into the game as it makes it, instead of being rendered first.
 
-With Modern audio output on, the game plays SAPI itself (speech_audio.py).  The first way of doing that was
+With Settings -> Speech -> Use modern output on, the game plays SAPI itself (speech_audio.py).  The first way of doing that was
 to render a line into memory and then hand the bytes over, which means nothing is heard until a whole piece
 of the line has been made: measured on the user's machine, 25 ms for a settings row, 37 ms for the first
 sentence of a paragraph, 121 ms for a piece of the length the splitter allows.

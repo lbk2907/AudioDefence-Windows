@@ -613,7 +613,7 @@ class ControlSchemePanel:
                action=self.step_sapi_pitch, shift_action=self.step_sapi_pitch_back)
         t.cell(VOICE_NAME + ' volume', '%d%%' % sapi.volume(), hint='How loud %s speaks. ' % VOICE_NAME + self.SAPI_STEP_HINT,
                action=self.step_sapi_volume, shift_action=self.step_sapi_volume_back)
-        t.cell('Modern audio output', 'ON' if params.modern_audio() else 'OFF',
+        t.cell('Use modern output', 'ON' if params.modern_audio() else 'OFF',
                hint='Press Enter to toggle: when on, the game plays %s itself, and a line stops the moment '
                     'you interrupt it. Turn it off to let Windows play it, which is slower to stop.'
                     % VOICE_NAME,
@@ -626,7 +626,7 @@ class ControlSchemePanel:
         params.set_modern_audio(not params.modern_audio())
         Speech.shared().modern_audio_changed()            # off hands the voice back now, not next time
         self.reload_data()
-        self.announce('Modern audio output %s' % ('on' if params.modern_audio() else 'off'))
+        self.announce('Use modern output %s' % ('on' if params.modern_audio() else 'off'))
         self._sapi_say('This is how it sounds.')          # in that voice, through whichever plays it now
 
     @staticmethod
