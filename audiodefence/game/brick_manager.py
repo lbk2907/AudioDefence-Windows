@@ -5,7 +5,7 @@ import logging
 import math
 
 from ..platform import crand
-from ..platform.defaults import ns_float_value, ns_int_value
+from ..platform.defaults import ns_float_value
 from ..s3d.engine import S3DEngine
 from . import data
 from .ingame_stats import InGameStats, notify_stats

@@ -772,11 +772,14 @@ replacing them.
 
 ### Original quirks kept on purpose
 
-Fourteen remain. Each is a design decision rather than a fault, a change that would alter how the game plays
+Fifteen remain. Each is a design decision rather than a fault, a change that would alter how the game plays
 or sounds rather than what it tells you, or something with no observable effect at all.
 
 The ones you can notice:
 
+- **Melee cancels a reload.** Swinging mid-reload interrupts it and swings anyway, where firing mid-reload
+  waits. Kept: swinging the machete while reloading is something the game lets you do, and losing the reload
+  is what it costs.
 - **Endless makes you earn an enemy; challenges hand it to you.** Five enemies carry a kill requirement —
   the Whisperer 150, the Berserk 250, the Riot Gear Zombie 350, the Zombie Dog 400, the Colossus 450 —
   counted against your total kills, of anything, across the whole save. Endless checks it and throws away

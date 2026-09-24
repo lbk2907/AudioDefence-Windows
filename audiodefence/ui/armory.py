@@ -22,7 +22,7 @@ from ..app import App
 from ..game import data
 from ..game.inventory import Inventory
 from ..game.weapon_manager import WeaponManager
-from ..platform.defaults import UserDefaults, ns_float_value, ns_int_value
+from ..platform.defaults import ns_float_value, ns_int_value
 from ..platform.runloop import RunLoop
 from ..platform.tracker import Tracker
 from ..s3d.engine import S3DEngine

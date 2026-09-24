@@ -92,9 +92,9 @@ rest, from how the cursor moves through a screen to how a controller vibrates.  
 restore their own defaults, and Miscellaneous holds the one button that resets every setting.
 
 PORT ADDITION: the pair that does not move the cursor changes tab (`cross_axis_key`), so the two are always
-different keys.  The armory steps through its four tab buttons (`ArmoryScreen.step_tab`, skipping Loadout
+different keys.  The armory steps through its four tab buttons (`ArmoryScreen.move_tab`, skipping Loadout
 when it is not enabled, since its button only raises the EQUIP alert) and the settings panel steps through
-its categories (`ControlSchemePanel.step_category`), which is the only way to reach one: the settings
+its categories (`ControlSchemePanel.move_category`), which is the only way to reach one: the settings
 screen opens inside Aiming with that category's heading as its first row, so there is no list of categories
 and Escape always leaves the screen.  Both name what they opened before reading the element they land on
 (`post_screen_changed(element, prefix)`), and both hold at the ends.  The original has neither:

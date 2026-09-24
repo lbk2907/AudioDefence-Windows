@@ -22,8 +22,6 @@ from __future__ import annotations
 
 import logging
 
-import pygame
-
 from ..game.gameplay import (AccessibleGameView, ButtonWithSwipe, ChallengeGameplayController, KeyboardMotion,
                              MotionManager, OpenerGameplayController)
 from ..game.parameters import GameParameters
