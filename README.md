@@ -661,9 +661,9 @@ nothing, or says something no keyboard player can act on.
 - **Being killed by a Berserk counts.** The enemy kills you from a state the original never reports a death
   from, so its own "killed you" tally stayed at zero however often it got you, and the Deaths total on the
   statistics screen missed those deaths as well.
-- **The coins and the diamonds are shown in the menus under Play and nowhere else** — challenge selection,
-  endless, the armory. In the original each screen decides, with no pattern to it: Settings shows them, the
-  challenge list does, the screen after a challenge does not.
+- **The coins and the diamonds are shown in the menus under Play and nowhere else**, whichever mode you are
+  in and whatever is added later. In the original each screen decides, with no pattern to it: Settings shows
+  them, the challenge list does, the screen after a challenge does not.
 - **A power-up's page reads like a weapon's**: the coins and diamonds can be read while you are deciding
   what to spend them on, its back button says what it closes, and the title says which level you are on.
   The original's page hides the whole screen behind it, bare name and price only.
