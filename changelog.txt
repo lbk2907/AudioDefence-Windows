@@ -1,22 +1,22 @@
 unrelease:
-The game runs on the Mac too: AudioDefence.app, in its own zip on the same release, updating itself like the Windows build. It speaks through VoiceOver, or through the system voice when VoiceOver is off, and Settings -> Speech has the system voice's own voice, rate, pitch and volume. The README's "On the Mac" says how to open it the first time and how to let VoiceOver speak for it.
-SAPI 5 stops the moment you interrupt it, and no longer holds up the game while it speaks. Settings, Speech has a Modern audio output row, on by default; turn it off to let Windows play it as before.
+The game runs on the Mac too, in its own build on the same release. It speaks through VoiceOver, or through the system voice when VoiceOver is off.
+SAPI 5 stops the moment you interrupt it, and no longer holds the game up while it speaks. Settings, Speech has a Modern audio output row for it, on by default.
 Press Control to stop whatever is being read out, in the menus or in a game.
-On the Endless screen you can no longer leave while the cards are being dealt. Escape, or Circle on a controller, keeps you there until they are down.
-Guns are heard the moment you press, and the moment you let go. The Machine Gun's shot had an eighth of a second of silence recorded before the bang, and so did the sound of it winding down, which was the gap you heard when tapping it and when letting go after a burst. Every sound a weapon makes now starts where the sound starts; the recordings are untouched.
-The Minigun power-up is heard for as long as it fires. Fully upgraded it runs twelve and a half seconds, where its recording is ten, so the gun went quiet for the last two and a half while the bullets kept landing. And a power-up you are holding stops when you die, instead of firing on into the death screen.
-A gun that is still firing stops when you switch weapon or when you die. Switching away from the Micro SMG or the Machine Gun mid-burst used to leave the old gun firing away with nothing to stop it, and no reload was called out while that was happening.
-When you hold the trigger until the clip is out, the gun stops before the Reload call-out rather than under it, and the call-out is always said at that moment - it used to be held back if anything had been called out in the last five seconds, which in a fight is most of the time. And a gun with no empty click of its own - the Machine Gun is one - now answers with its own warning instead of saying nothing: once for a press, and over and over while you hold the trigger down. The low ammo warning still means only that.
-Tapping the trigger no longer cuts the gun's wind-down off and starts it again. Each tap now winds down over the last one.
-The game closes properly when SAPI 5 is what speaks. It could hang on the way out, and there was a click as it went.
-With Modern audio output on, SAPI 5 starts talking sooner. It puts silence in front of every line it says - up to a tenth of a second of it, less the faster you have it set - and the game now drops that rather than playing it.
-SAPI 5 answers as fast as a screen reader does. It used to make a piece of the line before you heard any of it, which cost longer the longer the line was; now it hands the game the voice as it makes it, so a word comes back in six milliseconds and a paragraph in twenty-three, where a paragraph used to take thirty-seven and a long sentence a tenth of a second.
-Turning Modern audio output on while something was being read out no longer lets the old line carry on over the top of the new one for a fifth of a second.
-Turning Modern audio output off takes hold the moment you press it. It waited for the next thing the game had to say, and the line announcing the change did not count, so it could still be playing SAPI 5 itself well after you turned it off.
-If the sound device the speech is using goes away while you play - headphones unplugged, a controller with a speaker in it switched off, Windows moving to another one - the game opens another one and carries on. It used to lose the voice for the rest of the game, and with Modern audio output on that is every word it says.
-In Settings, Speech, the Speech output row and the SAPI 5 voice row open a list instead of stepping. The cursor starts on the one you are using, Enter takes the one you land on, and Escape leaves it as it was. Stepping meant hearing every choice on the way past, which for the voices is however many your machine has.
-Opening a weapon from the Loadout tab clicks, the way opening one in the Weapons tab or a power-up already did.
-In Gesture mode, D-pad up switches weapon and D-pad down reloads, beside the stick flicks that already did - the D-pad already turned with left and right. If you have never changed those two bindings yourself, your controller gets them; if you have, yours are left alone.
+On the Endless screen you can no longer leave while the cards are being dealt.
+Guns are heard the moment you press, and the moment you let go.
+The Minigun power-up is heard for as long as it fires, and a power-up you are holding stops when you die.
+A gun that is still firing stops when you switch weapon or when you die.
+When you empty the clip, the gun stops before the Reload call-out, and the call-out is always said.
+A gun with no empty click of its own answers with its own warning instead of saying nothing.
+Tapping the trigger no longer cuts the gun's wind-down short.
+The game closes properly when SAPI 5 is what speaks.
+SAPI 5 starts talking sooner, and answers as fast as a screen reader does.
+Turning Modern audio output on or off takes hold at once, and cuts whatever was being said.
+If the sound device the speech is using goes away while you play, the game carries on with another one.
+In Settings, Speech, the Speech output row and the SAPI 5 voice row open a list to choose from instead of stepping.
+Opening a weapon from the Loadout tab clicks, the way the other tabs already did.
+In Gesture mode, D-pad up switches weapon and D-pad down reloads, beside the stick flicks that already did.
+A power-up's page shows your coins and diamonds, says which level you are on, and its back button says what it closes.
 
 26.09.22-2:
 You can turn with buttons on a game controller instead of a stick: the D-pad, left and right, to begin with. Settings, Joystick has them as Alternate turn left and Alternate turn right, and you can set them to any buttons you like. They turn at the same speed as the keyboard, and the sticks keep turning as they always did. When the tutorial names your controller, the aiming line names them too, by whatever you have set them to.

@@ -859,6 +859,16 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   the armory anyway in the tail call at 0x0761b8 - so one press closed the weapon page *and* threw you out
   of the armory, skipping the list.  Back now matches Escape (`accessibility_perform_escape`): it closes the
   detail and leaves the cursor on the row it was opened from, and a second press leaves the armory.
+* The power-up page reads like the weapon page (user request).  `ADArmoryPowerUpUpgraderViewController` is
+  added to the armory's own view and made modal (`addSubview:` 0x10003b68c, `setAccessibilityViewIsModal:1`
+  0x10003b6d8), and a modal view hides all of its siblings - the status bar among them - so the one page
+  in the game where coins are spent was the one page that would not say how many you have.  The weapon page
+  is added to its tab's view instead and keeps them.  This page now hides the tab underneath it
+  (`content_container.elements_hidden`, put back when it closes) rather than being modal, so the status bar
+  stays; its back button says what it closes, as the weapon page's "Close weapon description" does, in
+  place of the nib's bare "Back" (`voiceOverBack`, 0x10004d848), and sits below the status bar so both
+  pages read in the same order; and the title carries the level, as the weapon page's does, where
+  `loadInformation` 0x10004da74 has the name alone and nothing on the page said what you already had.
 * Opening a weapon from the Loadout tab clicks (user request).  The shop's selection plays one
   (`[self playSound]` at 0x100090a88) and so does the power-ups' (0x10003b53c), but the loadout's
   (`-[Accessible_ADArmoryLoadoutViewController tableView:didSelectRowAtIndexPath:]` 0x10004a264) has none,

@@ -249,14 +249,26 @@ class PowerUpUpgraderView:
 
     def load_view(self, parent: View) -> None:            # 0x10004d89c
         v = self.view = View('', (0, 0, 568, 320), accessible=False, parent=parent, name='#69')
-        self.voice_over_back = Button('Back', (0, 0, 150, 40), parent=v, actions=[self.back_button_pressed],
-                                      name='#103')
+        # DIVERGENCE (user request): the nib's button for this page is "Back" (`voiceOverBack`, given its
+        # action in viewDidLoad 0x10004d848), where the weapon page's says what it closes - "Close weapon
+        # description".  A page you reach from a list wants the same words for the way out of it.
+        # and it sits below the status bar, where the weapon page's does (its nib frames are offset by the
+        # page's origin), so both pages read the same way round: the bar first, then the way out, then the
+        # page itself.  In the nib this button is at the very top, level with the bar
+        self.voice_over_back = Button('Close power-up description', (0, 53.5, 150, 40), parent=v,
+                                      actions=[self.back_button_pressed], name='#103')
         self.power_up_title = View('', (95, 70, 380, 40), parent=v, name='#124')
         self.power_up_description = View('', (221, 120, 245, 129), parent=v, name='#9 UITextView')
         self.upgrade_button = Button('UPDATE', (100, 257, 194, 38), parent=v,
                                      actions=[self.upgrade_button_pressed], name='#46')
         self.badge_image = None                           # no badgeImage outlet in the iPhone nib
-        self.view.modal = True                            # setAccessibilityViewIsModal:1 (VoiceOver only)
+        # DIVERGENCE (user request): the original adds this page to the armory's own view and makes it
+        # modal (addSubview: 0x10003b68c, setAccessibilityViewIsModal:1 0x10003b6d8), and a modal view hides
+        # every one of its siblings - the status bar among them.  So the one page in the game where you
+        # decide what to spend coins on was the one page that would not tell you how many you have, while
+        # the weapon page, which is added to its tab's view instead, keeps them.  This page hides the
+        # tab underneath it instead of being modal, which leaves the status bar where it is.
+        self.armory.content_container.elements_hidden = True
 
     def view_did_load(self) -> None:                      # 0x10004d7a8
         self.load_information()
@@ -266,7 +278,10 @@ class PowerUpUpgraderView:
         inv = Inventory.shared()
         d = self.power_up_dictionary
         level = inv.level_for_power_up(d.get('name'))
-        _set_text(self.power_up_title, d.get('displayName') or '')
+        # DIVERGENCE (user request): the title says which level the power-up is on, as the weapon page's
+        # does ("Fire grenade : level 2").  The original's is the name alone (0x10004da74) and nothing else
+        # on the page says what you already have, so the price stood on its own.
+        _set_text(self.power_up_title, '%s : level %i' % (d.get('displayName') or '', level))
         _set_text(self.power_up_description, d.get('upgradeText') or '')
         b = self.upgrade_button
         if level >= 4:
@@ -320,6 +335,7 @@ class PowerUpUpgraderView:
     def remove(self) -> None:
         if self.view.parent is not None and self.view in self.view.parent.children:
             self.view.parent.children.remove(self.view)
+        self.armory.content_container.elements_hidden = False   # the tab underneath can be read again
         self.armory.detail_closed(self)
 
 
