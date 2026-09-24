@@ -31,9 +31,10 @@ file, **at the end of that block** - it reads in the order things were done.
   "which used to" or a semicolon to hold it together, it is two entries or it is too long.  Thirty words
   is long; the whole file is under thirty for every entry, so a new one that runs past it is a rewrite,
   not an exception.
-* That holds for the released sections too.  They are the same list a player reads, and an entry there
-  that rambles can be cut down without waiting for anything - it is describing a build that already
-  shipped, not changing it.
+* **Only the `unrelease:` block is edited.**  The released sections were cut down once, on 2026-09-24,
+  because they had been written the long way; that is done and they are left alone now.  A version that
+  has shipped is what its players were told at the time, and rewriting it changes the record for no one's
+  benefit.
 * A plain `py compiler.py` files the unreleased lines under the version it builds, so leave them where
   they are until then.
 
