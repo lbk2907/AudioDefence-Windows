@@ -592,7 +592,7 @@ copy what the game does rather than what it ought to do — its bugs included. E
 that is listed below, and `docs/PORTING_NOTES.md` carries the same list with the address of the method each
 one came from, so any of them can be checked against the binary or put back.
 
-There are **115 divergences** and **15 original quirks kept on purpose**.
+There are **116 divergences** and **15 original quirks kept on purpose**.
 
 ### 1. Windows standing in for a phone
 

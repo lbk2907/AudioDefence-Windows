@@ -853,6 +853,11 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   the armory anyway in the tail call at 0x0761b8 - so one press closed the weapon page *and* threw you out
   of the armory, skipping the list.  Back now matches Escape (`accessibility_perform_escape`): it closes the
   detail and leaves the cursor on the row it was opened from, and a second press leaves the armory.
+* Opening a weapon from the Loadout tab clicks (user request).  The shop's selection plays one
+  (`[self playSound]` at 0x100090a88) and so does the power-ups' (0x10003b53c), but the loadout's
+  (`-[Accessible_ADArmoryLoadoutViewController tableView:didSelectRowAtIndexPath:]` 0x10004a264) has none,
+  and its sighted twin has none either - `handleItemTap:` 0x10000adf4 goes straight to
+  `openDescriptionForItemWithName:`.  So the loadout was the one way into a weapon page that was silent.
 * The statistics screen speaks a weapon's exact accuracy (user request).  `configureWeaponCell:ForRow:`
   0x1000d0ff0 builds the label at 0x0d129c from everything before the first dot of the accuracy's string
   value, so 66.6 per cent is announced as 66; and a weapon that has never been fired has shotsHit /

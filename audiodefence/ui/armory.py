@@ -446,6 +446,12 @@ class LoadoutTab(_Tab):
         self.armory.post_screen_changed(self.table_view.children[0] if self.table_view.children else None)
 
     def did_select_index(self, index: int) -> None:       # tableView:didSelectRowAtIndexPath: 0x10004a264
+        # DIVERGENCE (user request): opening a weapon here made no sound.  The original's own selection
+        # (0x10004a264) has no [self playSound], where the shop's (0x100090a88) and the power-ups'
+        # (0x10003b53c) both have one, and its sighted twin is no different - handleItemTap: 0x10000adf4
+        # goes straight to openDescriptionForItemWithName:.  So the loadout was the odd one out in the
+        # original, and every other way into a weapon page clicks.
+        _play_click()
         weapon = WeaponManager.shared().get_all_weapons_array()[index]
         self.detail_view = WeaponDescriptionView(weapon, False, self.armory, self.table_view, self.view)
         self.armory.detail_opened(self.detail_view)
