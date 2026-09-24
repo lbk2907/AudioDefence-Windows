@@ -32,6 +32,7 @@ class ScreenManager:
         self._held = None                                 # (event, screen, when the next repeat is due)
         self._pad_jump = False                            # Cross held: the menus' Control (see below)
         self._pad_jumped = False                          # and whether it was used as that, not tapped
+        self._pad_in_game: set = set()                    # buttons whose press the game took (see below)
         self.request_quit = lambda: log.info('quit requested with no window running')
 
     # --- services --------------------------------------------------------------------------------
@@ -180,10 +181,25 @@ class ScreenManager:
         from .gameplay_screen import GameplayScreen
         top = self.top()
         if isinstance(top, GameplayScreen):
+            if pressed:
+                self._pad_in_game.add(name)               # what the game takes, its letting go belongs to
+            else:                                         # the game as well - never to whatever is there by
+                self._pad_in_game.discard(name)           # then (below)
             (top.pad_down if pressed else top.pad_up)(source, name)
             return
         if not pressed and isinstance(self.screen, GameplayScreen):
             self.screen.pad_up(source, name)              # held into a pause: let go in the game as well
+        if not pressed and name in self._pad_in_game:
+            # this button was pressed in a game and let go somewhere else, because
+            # the press itself took the game away - Cross skipping the intro is the one that bites.  Cross
+            # is Enter on the way up, since held it is the menus' Control, so that Enter arrived on the menu
+            # the skip had just opened and pressed whatever it had landed on: one press of Cross skipped the
+            # intro and started a game from the main menu's Play button.  A press the game took is finished
+            # in the game.
+            self._pad_in_game.discard(name)
+            if name == self.JUMP_BUTTON:
+                self._pad_jump = False
+            return
         takes = getattr(top, 'takes_pad_input', None)
         if pressed and takes is not None and takes():     # Settings is waiting for a button to bind
             if name == self.JUMP_BUTTON:
