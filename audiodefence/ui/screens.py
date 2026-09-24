@@ -99,17 +99,24 @@ class MenuItem:
         return text
 
 
+#: what already ends a sentence, so a full stop after it would be a second one
+ENDS_A_SENTENCE = '.!?:'
+
+
 def joined(parts) -> str:
     """PORT ADDITION: the parts of a line, read one after another with a full stop between them - and not
-    a second one where a part already ends in one.  An alert's message does: "...playing Endless Mode.." was
-    that stop and the one put before the button's name."""
+    a second one where a part already ends a sentence of its own.
+
+    An alert is two of those in a row: its title ends in a mark ("Not enough Coins!") and its message in a
+    stop, so the line read out was "Not enough Coins!. ... playing Endless Mode.. OK".
+    """
     out = ''
     for part in parts:
         part = str(part).strip()
         if not part:
             continue
         if out:
-            out += ' ' if out.endswith('.') else '. '
+            out += ' ' if out[-1] in ENDS_A_SENTENCE else '. '
         out += part
     return out
 

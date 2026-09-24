@@ -31,7 +31,7 @@ import pygame
 
 from ..platform import host as system
 from ..s3d.engine import S3DEngine
-from .screens import Screen, menu_music_volume_key
+from .screens import Screen, joined, menu_music_volume_key
 
 log = logging.getLogger('ui.a11y')
 
@@ -463,7 +463,7 @@ class AccessibleScreen(Screen):
                 element = self.first_content_element(elements)
             self.focus = element
             if element is not None:
-                self.speak('%s. %s' % (prefix, element.spoken()) if prefix else element.spoken())
+                self.speak(joined([prefix, element.spoken()]) if prefix else element.spoken())
             elif prefix:
                 self.speak(prefix)
 

@@ -911,8 +911,11 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   shotsFired = 0 / 0, which is nan, so its row is read out as "accuracy, nan percent".  The figure is spoken
   to one decimal instead, and a weapon with no shots says so.
 * PORT ADDITION: a line built from parts is joined with a full stop, and not a second one where a part
-  already ends in one (`screens.joined`).  An alert's message ends with one, so "Not enough Coins!. You
-  don't have enough Coins ... playing Endless Mode.. OK" had two before the button's name.
+  already ends a sentence of its own - a stop, a mark, a colon (`screens.joined`, `ENDS_A_SENTENCE`).  An
+  alert is two of those in a row: "Not enough Coins!. You don't have enough Coins ... playing Endless
+  Mode.. OK" had one after the title's exclamation mark and another before the button's name.  The same
+  joining is used where a screen change names what was opened before the element it lands on
+  (`_apply_pending_focus`), which had the same fault in a row's list of choices.
 * PORT ADDITION: every screen names itself as you enter it - "Main Menu. Play, button".  These are the
   game's own names: each of these controllers sends `-[ADStatusBarViewController setPageTitle:]` in its
   `viewDidLoad` (ARMORY, PLAY, CHALLENGE, ZOMBIPEDIA, STATISTICS, INFO, GAME OVER, Credits, Dr Bastard's
