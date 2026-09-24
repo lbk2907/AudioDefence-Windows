@@ -52,6 +52,11 @@ CHUNK = 512
 FADE = 0.004
 #: how long before a device that would not open is tried again
 RETRY_SECONDS = 5.0
+#: SDL's own word for what an audio device is doing; a device that has gone reads as stopped
+SDL_AUDIO_STOPPED = 0
+#: how long a line may sit waiting with the card not asking for any of it before the card is given up on.
+#: A period is 12 ms, so a card that is alive has asked several times over by then.
+DEAF_SECONDS = 0.25
 #: what counts as silence at the front of a line (of 32768, so about -54 dB), how much of it is left in
 #: place, and how far in it is worth looking for the voice at all
 QUIET = 64
@@ -102,13 +107,19 @@ class SpeechAudio:
         self.at = 0                                       # how far into the first of them the card has got
         self.lock = threading.Lock()
         self.last_try = -RETRY_SECONDS
+        self.asked_at = 0.0                               # when the card last asked for something to play
 
     # --- the card -------------------------------------------------------------------------------------
     def available(self) -> bool:
         """Whether a line can be played now; opens the device the first time.  Called from the speaking
         thread, so the game never waits for a card to open - it took 80 ms on this machine."""
         if self.device is not None:
-            return True
+            if self.still_there():
+                return True
+            log.info('the speech card has gone; another will be opened')
+            self.drop()
+            self.last_try = time.monotonic()              # now, not after the usual wait: a card that has
+            return self.open()                            # gone is not a card that would not open
         now = time.monotonic()
         if now - self.last_try < RETRY_SECONDS:
             return False
@@ -126,8 +137,50 @@ class SpeechAudio:
             log.info('the game cannot play speech itself, so Windows will: %s', exc)
             return False
         self.device = device
+        self.asked_at = time.monotonic()
         log.info('speech is played by the game (%d Hz, %d channels)', RATE, CHANNELS)
         return True
+
+    def still_there(self) -> bool:
+        """Whether the card is still a card.
+
+        A sound device can go while the game is running: headphones unplugged, a controller with a speaker
+        in it dropping off, Windows moving to another one.  SDL does not tell us - it simply stops asking
+        for sound - so with nothing watching, the speech falls silent for the rest of the game, and with
+        Modern audio output on that is all of the speech.  NVDA's own player copes with this; none of its
+        code is here, only the same care.
+
+        Asked two ways: what SDL says the device is doing, and, failing that, whether it has asked us for
+        anything recently while we had something to give it.  The second catches a card that is still open
+        as far as SDL is concerned but is no longer being driven.
+        """
+        device = self.device
+        if device is None:
+            return False
+        try:
+            from .pad import sdl
+            library = sdl()
+            if library is not None:
+                doing = int(library.SDL_GetAudioDeviceStatus(ctypes.c_uint32(int(device.deviceid))))
+                if doing == SDL_AUDIO_STOPPED:
+                    return False
+        except Exception as exc:
+            log.debug('the speech card would not say what it is doing: %s', exc)
+        with self.lock:
+            waiting = bool(self.chunks)
+        return not waiting or time.monotonic() - self.asked_at < DEAF_SECONDS
+
+    def drop(self) -> None:
+        """Let go of a card that has gone, without the fade and the wait that `close` gives a live one."""
+        device, self.device = self.device, None
+        with self.lock:
+            self.chunks, self.at = [], 0
+        if device is None:
+            return
+        try:
+            device.close()
+        except Exception as exc:
+            log.debug('the card that went would not close: %s', exc)
 
     def close(self) -> None:
         """Stop and let the card go, on the way out.
@@ -199,6 +252,7 @@ class SpeechAudio:
         """SDL's audio thread: hand over what is waiting, and silence when there is none."""
         wanted = len(stream)
         filled = 0
+        self.asked_at = time.monotonic()                  # the card is alive: it is asking (still_there)
         try:
             with self.lock:
                 while filled < wanted and self.chunks:

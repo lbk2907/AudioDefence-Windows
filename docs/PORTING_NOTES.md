@@ -622,6 +622,13 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   Rendering takes the voice's output away from Windows, so the Windows path asks for it
   back (`_to_windows`, the card kept from before the first render): without that, turning Modern audio
   output off left the voice speaking into memory nobody played, which is silence until the game restarts.
+  The card is watched for going away: a sound device can be unplugged, a controller with a speaker in it can
+  drop off, Windows can move to another one, and SDL says nothing about any of it - it stops asking for
+  sound, and with nothing watching, the speech is silent for the rest of the game.  Before each line the
+  card is asked what it is doing (`still_there`, `SDL_GetAudioDeviceStatus`), and failing that whether it
+  has asked for anything in the last quarter second while something was waiting for it; a card that has
+  gone is dropped and another opened at once, and with none to be had, Windows speaks until there is one.
+  NVDA's own player copes with the same thing, and none of its code is here.
   `Speech.shutdown`, called before the engine's, stops the voice and closes the card, so a line still
   waiting is not heard carrying on after the game has fallen silent.  Closing it goes through SDL itself
   (`SDL_PauseAudioDevice` by ctypes) rather than through pygame: SDL waits for the audio callback to return
