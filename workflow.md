@@ -24,6 +24,9 @@ file, **at the end of that block** - it reads in the order things were done.
 
 * One entry per line, no wrapping, no bullets, no "Fixed:", no version numbers, no addresses.
 * Plain sentences about what a player notices, not what the code does.
+* **Name a screen or a tab in words, not as a path.**  "The Speech tab in Settings", not "Settings,
+  Speech": a comma standing for a step only reads as one to somebody who already knows the way, and read
+  aloud it is two nouns and a pause.
 * **A sentence or two, and stop.**  Say what is different now; leave out what it used to do, why it did
   that, how it was measured, and every number that is not the point.  The reasoning, the measurements and
   the addresses belong in `docs/PORTING_NOTES.md`, where they can be looked up by whoever wants them - a

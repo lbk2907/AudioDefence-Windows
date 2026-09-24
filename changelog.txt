@@ -1,6 +1,6 @@
 unrelease:
 The game runs on the Mac too, in its own build on the same release. It speaks through VoiceOver, or through the system voice when VoiceOver is off.
-SAPI 5 responds as quickly as a screen reader does: it starts sooner, stops the moment you interrupt it, and no longer holds the game up while it speaks. Settings, Speech has a Use modern output row for it, on by default, and turning it on or off takes hold at once.
+SAPI 5 responds as quickly as a screen reader does: it starts sooner, stops the moment you interrupt it, and no longer holds the game up while it speaks. The Speech tab in Settings has a Use modern output row for it, on by default. Turning it on or off takes hold at once.
 Press Control to stop whatever is being read out, in the menus or in a game.
 On the Endless screen you can no longer leave while the cards are being dealt.
 Guns are heard the moment you press and the moment you let go, and tapping the trigger no longer cuts the gun's wind-down short.
@@ -10,7 +10,7 @@ When you empty the clip, the gun stops before the Reload call-out and the call-o
 A gun running low on ammo keeps warning you until you reload, instead of only while you hold the trigger down. Firing in short bursts, the warning was never heard at all.
 The game closes properly when SAPI 5 is what speaks.
 If the sound device the speech is using goes away while you play, the game carries on with another one.
-In Settings, Speech, the Speech output row and the SAPI 5 voice row open a list to choose from instead of stepping.
+The Speech output row and the SAPI 5 voice row in the Speech tab open a list to choose from instead of stepping.
 Buttons that were silent now click: opening a weapon from the Loadout tab, closing a weapon page, equipping a weapon, and the OK on a message like Not enough Coins.
 In Gesture mode, D-pad up switches weapon and D-pad down reloads, beside the stick flicks that already did.
 A power-up's page shows your coins and diamonds, says which level you are on, and its back button says what it closes.
