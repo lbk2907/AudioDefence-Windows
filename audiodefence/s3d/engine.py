@@ -411,9 +411,6 @@ class S3DPlayList:
             completion = _NOOP_COMPLETION                            # -[S3DPlayList activate] passes a block
         self._activate(completion)
 
-    def activate_nil(self) -> None:
-        self._activate(None)
-
     def _activate(self, completion) -> None:
         if self.activating:
             return
@@ -587,11 +584,6 @@ class S3DSound:
         return float(off.value)
 
     # --- loading ---------------------------------------------------------------------------------
-    def _wanted_variant(self) -> str:
-        if self.spatialized:
-            return 'mono'
-        return 'stereo' if self.channels == 2 else 'center'
-
     def activate(self, completion=None) -> None:                    # 0x1001047fc
         if self.loaded:
             if completion is not None:

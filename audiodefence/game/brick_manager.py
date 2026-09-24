@@ -251,7 +251,7 @@ class BrickManager:
     def number_of_active_objects_on_scene(self) -> int:         # 0x1000c35e4
         return sum(1 for t in self.all_potential_targets() if t.can_be_shot_at())
 
-    def enemies_from_current_brick(self) -> list:
+    def enemies_from_current_brick(self) -> list:          # 0x1000c3734
         b = self.current_brick()
         return b.enemies if b is not None else []
 

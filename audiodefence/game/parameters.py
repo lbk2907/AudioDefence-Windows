@@ -253,9 +253,6 @@ class GameParameters:
         self.defaults.set_object(level, 'triggerEffects')
         self.defaults.synchronize()
 
-    def trigger_effects(self) -> bool:
-        return self.trigger_level() != 'off'
-
     #: PORT ADDITION: whether the hints, the tutorial text and the other lines that name a key name the
     #: keyboard's keys or the connected controller's buttons (platform/pad.menu_words,
     #: game/tutorial_text.py).  With no controller connected - at startup, or when the last one goes - it

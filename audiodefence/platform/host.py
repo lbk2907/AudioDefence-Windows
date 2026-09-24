@@ -45,10 +45,6 @@ def archive_name(version: str = '', tag: str = ARCHIVE_TAG) -> str:
     return (prefix + version if version else prefix.rstrip('-')) + '.zip'
 
 
-def quit_hint() -> str:
-    """How you leave the game from outside it: no key in the game quits."""
-    return 'Cmd+Q' if MAC else 'Alt+F4'
-
 
 def user_dir_hint() -> str:
     """Where the settings, saves and crash.txt are, in words a player can find."""

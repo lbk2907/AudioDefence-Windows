@@ -166,10 +166,5 @@ def lead_in(path: str, floor: float = 0.002, most: float = 0.25) -> float:
     return min(float(np.argmax(loud)) / float(rate), most)
 
 
-def forget(path: str) -> None:
-    with _lock:
-        _cache.pop(path, None)
-
-
 def exists(path: str) -> bool:
     return os.path.isfile(path)
