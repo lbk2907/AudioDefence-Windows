@@ -108,6 +108,7 @@ class ControlSchemePanel:
         self.pad_capturing_replaces = False
         self.pad_capturing_model = None                   # and the controller whose profile it goes to
         self.sapi_shown = False                           # Speech: whether SAPI 5's rows are listed
+        self.choosing = None                              # a row's choices, shown as a list of their own
         self._trigger_sample = None                       # the Trigger feel being tried on the pad
         self._speech_due = 0.0
         frame = (center[0] - 220.0, center[1] - 122.0, 440.0, 244.0)
@@ -117,6 +118,9 @@ class ControlSchemePanel:
 
     # --- rows ------------------------------------------------------------------------------------
     def reload_data(self) -> None:
+        if self.choosing is not None:                     # a row's own choices are the list just now
+            self._load_choices()
+            return
         params = GameParameters.shared()
         t = _TableLoader(self.table_view)
         # The original's accessible table is one list under "Aiming", "Controls" and "Sound" headings; the
@@ -200,11 +204,11 @@ class ControlSchemePanel:
             from ..platform.speech import OUTPUTS
             t.cell('Speech output', dict(OUTPUTS)[params.speech_output()],
                    hint='Which screen reader or voice speaks the game. Automatic uses %s. Choose one and only '
-                        'that one speaks: the game is silent while it is not running. Press Enter for the next '
-                        'setting and Shift plus Enter for the previous.'
+                        'that one speaks: the game is silent while it is not running. Press Enter for the '
+                        'list.'
                         % ('VoiceOver, or the system voice when VoiceOver is off' if system.MAC else
                            'NVDA, or another screen reader that is running, or SAPI 5 when none is'),
-                   action=self.step_speech_output, shift_action=self.step_speech_output_back)
+                   action=self.choose_speech_output, shift_action=self.choose_speech_output)
             self.sapi_shown = self.sapi_speaking()
             if self.sapi_shown:                           # only while SAPI 5 is what speaks
                 self.sapi_rows(t, params)
@@ -281,6 +285,56 @@ class ControlSchemePanel:
 
     def announce(self, text: str) -> None:
         self.screen.speak(text)
+
+    # --- choosing from a list (PORT ADDITION) -----------------------------------------------------
+    def open_choices(self, title: str, options, current, apply) -> None:
+        """Show a row's choices as a list of their own, the way the aiming and the control rows are listed.
+
+        Stepping through a setting with Enter suits the three or four choices most of them have.  Speech
+        output has twelve, and the SAPI 5 voice list has as many voices as are installed - two hundred and
+        fifty on the machine this was written for - which is not a list to walk through one press at a
+        time, hearing each one as you pass it.  Enter opens it, the one in use is where the cursor lands,
+        Enter takes one and Escape leaves it as it was (user request).
+        """
+        self.choosing = (title, list(options), current, apply)
+        self.table_view.children.clear()                  # a list of its own: no row keeps its place
+        self.reload_data()
+        rows = [row for row in self.table_view.children if row.traits == CELL]
+        on = next((row for row in rows if row.selected), rows[0] if rows else None)
+        self.screen.post_screen_changed(on, '%s. %d to choose from.' % (title, len(rows)))
+
+    def _load_choices(self) -> None:
+        _title, options, current, _apply = self.choosing
+        t = _TableLoader(self.table_view)
+        for value, label in options:
+            row = t.cell(label, hint='Press Enter to use this one. Escape leaves it as it was.',
+                         action=lambda v=value: self.take_choice(v))
+            row.selected = value == current               # where the cursor lands, and read as selected
+
+    def take_choice(self, value) -> None:
+        title, _options, _current, apply = self.choosing
+        self.choosing = None
+        self.table_view.children.clear()
+        apply(value)                                      # which says what was chosen, in the new voice
+        self.reload_data()
+        self._focus_row(title)
+
+    def close_choices(self) -> bool:
+        """Escape or Back with a list open: back to the row it was opened from, the setting untouched.
+        True when there was one open, so the screen knows the key was used here."""
+        if self.choosing is None:
+            return False
+        title = self.choosing[0]
+        self.choosing = None
+        self.table_view.children.clear()
+        self.reload_data()
+        self._focus_row(title)
+        return True
+
+    def _focus_row(self, title: str) -> None:
+        rows = [row for row in self.table_view.children if row.traits == CELL]
+        row = next((r for r in rows if (r.label or '').startswith(title)), rows[0] if rows else None)
+        self.screen.post_screen_changed(row)
 
     # --- categories ------------------------------------------------------------------------------
     def open_category(self, key: str) -> None:
@@ -485,16 +539,19 @@ class ControlSchemePanel:
         self.reload_data()
         self.announce('Names in hints and tutorial: %s' % dict(params.KEY_NAMES)[params.key_names()])
 
-    def step_speech_output(self, step: int = 1) -> None:
-        """The next Speech output.  Said through the new one - or, when that one cannot speak, through the
-        automatic choice, since it could not be heard otherwise and the player would be left in silence
-        without knowing why."""
+    def choose_speech_output(self) -> None:
+        """PORT ADDITION: the outputs as a list (user request).  Twelve of them, and each one said as you
+        passed it while stepping - the list says them once and takes the one you land on."""
+        from ..platform.speech import OUTPUTS
+        self.open_choices('Speech output', list(OUTPUTS), GameParameters.shared().speech_output(),
+                          self.take_speech_output)
+
+    def take_speech_output(self, choice: str) -> None:
+        """The chosen Speech output.  Said through the new one - or, when that one cannot speak, through
+        the automatic choice, since it could not be heard otherwise and the player would be left in
+        silence without knowing why."""
         from ..platform.speech import OUTPUTS, PRISM_NAMES, Speech
-        params = GameParameters.shared()
-        keys = [key for key, _name in OUTPUTS]
-        params.set_speech_output(keys[(keys.index(params.speech_output()) + step) % len(keys)])
-        self.reload_data()
-        choice = params.speech_output()
+        GameParameters.shared().set_speech_output(choice)
         name = dict(OUTPUTS)[choice]
         speech = Speech.shared()
         if speech.can_speak(choice):
@@ -505,9 +562,6 @@ class ControlSchemePanel:
         else:
             speech.speak_automatic('Speech output: %s. %s is not running, so the game will be silent until '
                                    'it is.' % (name, name))
-
-    def step_speech_output_back(self) -> None:
-        self.step_speech_output(-1)
 
     # --- SAPI 5 (PORT ADDITION) ------------------------------------------------------------------
     SAPI_STEP_HINT = 'Press Enter for the next setting and Shift plus Enter for the previous.'
@@ -523,7 +577,7 @@ class ControlSchemePanel:
     def follow_speech(self) -> None:
         """On the Speech category, SAPI 5's rows come and go as it starts or stops being what speaks - a
         screen reader started or closed while the list is open - looked at once a second."""
-        if self.category != 'speech' or self.capturing is not None:
+        if self.category != 'speech' or self.capturing is not None or self.choosing is not None:
             return
         now = time.monotonic()
         if now < self._speech_due:
@@ -545,8 +599,8 @@ class ControlSchemePanel:
         names = dict(sapi.voices())
         t.cell(VOICE_NAME + ' voice', names.get(config['voice'], self.CONTROL_PANEL_VOICE),
                hint='The voice %s speaks with: %s, or any installed voice. ' % (VOICE_NAME, VOICE_DEFAULT_HINT)
-                    + self.SAPI_STEP_HINT,
-               action=self.step_sapi_voice, shift_action=self.step_sapi_voice_back)
+                    + 'Press Enter for the list.',
+               action=self.choose_sapi_voice, shift_action=self.choose_sapi_voice)
         t.cell(VOICE_NAME + ' rate', str(sapi.rate()), hint='How fast %s speaks, from -10 to 10. ' % VOICE_NAME + self.SAPI_STEP_HINT,
                action=self.step_sapi_rate, shift_action=self.step_sapi_rate_back)
         if sapi.boost_supported(config['voice'] if config['voice'] in names else None):
@@ -579,20 +633,20 @@ class ControlSchemePanel:
         from ..platform.speech import Speech
         Speech.shared().sapi.speak(text, True)
 
-    def step_sapi_voice(self, step: int = 1) -> None:
+    def choose_sapi_voice(self) -> None:
+        """PORT ADDITION: the installed voices as a list (user request).  There are as many as the machine
+        has - two hundred and fifty on the one this was written for - and stepping said every one of them
+        on the way past."""
         from ..platform.speech import Speech
-        params = GameParameters.shared()
         voices = Speech.shared().sapi.voices()
-        ids = [None] + [voice_id for voice_id, _name in voices]
-        current = params.sapi_config()['voice']
-        index = ids.index(current) if current in ids else 0
-        params.set_sapi(voice=ids[(index + step) % len(ids)])
-        self.reload_data()
-        chosen = params.sapi_config()['voice']
-        self._sapi_say('%s voice: %s' % (VOICE_NAME, dict(voices).get(chosen, self.CONTROL_PANEL_VOICE)))
+        self.open_choices('%s voice' % VOICE_NAME, [(None, self.CONTROL_PANEL_VOICE)] + list(voices),
+                          GameParameters.shared().sapi_config()['voice'], self.take_sapi_voice)
 
-    def step_sapi_voice_back(self) -> None:
-        self.step_sapi_voice(-1)
+    def take_sapi_voice(self, voice_id) -> None:
+        from ..platform.speech import Speech
+        GameParameters.shared().set_sapi(voice=voice_id)
+        names = dict(Speech.shared().sapi.voices())
+        self._sapi_say('%s voice: %s' % (VOICE_NAME, names.get(voice_id, self.CONTROL_PANEL_VOICE)))
 
     def step_sapi_rate(self, step: int = 1) -> None:
         from ..platform.speech import Speech
@@ -831,7 +885,8 @@ class SettingsScreen(ViewControllerScreen):
                 return
         where = cross_axis_key(event)                     # PORT ADDITION: the other arrows change category
         if where is not None:
-            self.control_scheme.move_category(where)
+            if self.control_scheme.choosing is None:      # while a row's list is open, it has the arrows
+                self.control_scheme.move_category(where)
             return
         super().key_down(event)
 
@@ -869,7 +924,16 @@ class SettingsScreen(ViewControllerScreen):
     def validate_button_pressed(self) -> None:            # 0x1000afa58
         self.host.dismiss_presented(self)
 
+    # PORT ADDITION: a row's list of choices takes Escape and Back first, closing itself rather than the
+    # screen - the armory does the same for an open weapon page (armory.accessibility_perform_escape)
+    def accessibility_perform_escape(self) -> None:
+        if self.control_scheme.close_choices():
+            return
+        super().accessibility_perform_escape()
+
     def back_button_pressed(self) -> None:                # 0x1000af948
+        if self.control_scheme.close_choices():
+            return
         pl = _headphones_playlist()
         if pl is not None:
             pl.deactivate()
@@ -938,4 +1002,6 @@ class PauseScreen(SettingsScreen):
             self.pause.quit_button_touched()
 
     def back_button_pressed(self) -> None:                # 0x1000559ac
+        if self.control_scheme.close_choices():           # PORT ADDITION: as on the settings screen
+            return
         self.validate_button_pressed()

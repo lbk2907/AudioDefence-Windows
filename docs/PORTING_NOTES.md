@@ -790,8 +790,14 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   NVDA, JAWS, ZDSR, Narrator, ZoomText, System Access, Window-Eyes, PC-Talker, Boy PC Reader, Sense Reader
   and SAPI 5 only (the Prism ones through `_Readers.current(only)`), with nothing spoken while that one
   cannot speak.  Automatic tries the Prism ones in that same order, not Prism's own (which puts PC-Talker,
-  ZDSR and Boy PC Reader before JAWS, and Narrator last).  Enter and Shift+Enter step through them and
-  wrap.  The row says each step through the new choice or, when that one cannot speak (`Speech.can_speak`),
+  ZDSR and Boy PC Reader before JAWS, and Narrator last).  Enter opens them as a list of their own
+  (`ControlSchemePanel.open_choices`, user request): the panel shows the choices instead of the category's
+  rows, the one in use is where the cursor lands and is read as selected, Enter takes the one under the
+  cursor and Escape or Back leaves the setting as it was - both close the list rather than the screen, the
+  way the armory's Escape closes an open weapon page.  They used to step one press at a time, which says
+  every choice on the way past: twelve here, and as many voices as the machine has on the voice row below -
+  two hundred and fifty on the machine this was written for.  The row says what was taken, through the new
+  choice or, when that one cannot speak (`Speech.can_speak`),
   through the automatic one with the reason ("JAWS is not running, so the game will be silent until it is",
   or that Prism is not installed): said through the choice itself, it would not be heard, and a player
   stepping through would not know where they had landed.  The game reads the choice as it starts
