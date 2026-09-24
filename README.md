@@ -592,7 +592,7 @@ copy what the game does rather than what it ought to do — its bugs included. E
 that is listed below, and `docs/PORTING_NOTES.md` carries the same list with the address of the method each
 one came from, so any of them can be checked against the binary or put back.
 
-There are **118 divergences** and **15 original quirks kept on purpose**.
+There are **119 divergences** and **15 original quirks kept on purpose**.
 
 ### 1. Windows standing in for a phone
 
@@ -655,6 +655,9 @@ nothing, or says something no keyboard player can act on.
   instead of closing the page and the armory together.
 - **Opening a weapon from the Loadout tab clicks**, the way opening one in the Weapons tab, or a power-up,
   already did. The loadout was the one way into a weapon page the original left silent.
+- **Being killed by a Berserk counts.** The enemy kills you from a state the original never reports a death
+  from, so its own "killed you" tally stayed at zero however often it got you, and the Deaths total on the
+  statistics screen missed those deaths as well.
 - **The coins and the diamonds are shown in the menus under Play and nowhere else** — challenge selection,
   endless, the armory. In the original each screen decides, with no pattern to it: Settings shows them, the
   challenge list does, the screen after a challenge does not.

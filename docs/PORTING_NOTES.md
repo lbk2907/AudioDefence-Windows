@@ -859,6 +859,14 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   the armory anyway in the tail call at 0x0761b8 - so one press closed the weapon page *and* threw you out
   of the armory, skipping the list.  Back now matches Escape (`accessibility_perform_escape`): it closes the
   detail and leaves the cursor on the row it was opened from, and a second press leaves the armory.
+* Being killed by a Berserk counts (user request).  `-[ADEnemy update:]`'s case 3 posts `PLAYER_DIED` at
+  0x10005f16c and then attacks; case 8, the berserk charge, goes straight to `attack` at 0x10005f468 with no
+  notification.  `ADInGameStats` learns of a death only from that notification, so the Berserk - the one
+  enemy that kills from this state - was never credited with a casualty however many times it killed you,
+  and the run was not counted as a death either: `save_stats` asks `update_deaths` only when the flag the
+  same notification sets is on, so the Deaths total on the statistics screen missed it too.  Case 8 posts it
+  now, as case 3 does.  One post per death still: the enemy goes to state 4 in `attack`, and every other
+  enemy is stopped by `stop_all_enemies_after_player_death_by_enemy_with_name`.
 * The coins and the diamonds belong to Play (user request).  Each screen decides for itself in the original
   (`setCurrenciesVisibility:` 0x10001d4b0 and `setDiamonsdsVisibility:` 0x10001d5c8 in its `viewDidLoad`),
   and what falls out of that has no pattern: Settings shows them, the Play menu does not, the challenge list

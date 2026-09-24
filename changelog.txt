@@ -19,6 +19,7 @@ In Gesture mode, D-pad up switches weapon and D-pad down reloads, beside the sti
 A power-up's page shows your coins and diamonds, says which level you are on, and its back button says what it closes.
 Your coins and diamonds are shown in the menus under Play - challenge, endless, the armory - and nowhere else.
 The Announcer switch and the game's volume are kept with your other settings now, not with your progress. Both start at their default once, and everything else is as you left it.
+Being killed by a Berserk counts. Its own tally stayed at zero however many times it got you, and your Deaths total missed those too.
 
 26.09.22-2:
 You can turn with buttons on a game controller instead of a stick: the D-pad to begin with, and Settings, Joystick can move them.
