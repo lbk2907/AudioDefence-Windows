@@ -28,7 +28,12 @@ file, **at the end of that block** - it reads in the order things were done.
   that, how it was measured, and every number that is not the point.  The reasoning, the measurements and
   the addresses belong in `docs/PORTING_NOTES.md`, where they can be looked up by whoever wants them - a
   player reading the list wants to know what changed, not to be walked through it.  If an entry needs a
-  "which used to" or a semicolon to hold it together, it is two entries or it is too long.
+  "which used to" or a semicolon to hold it together, it is two entries or it is too long.  Thirty words
+  is long; the whole file is under thirty for every entry, so a new one that runs past it is a rewrite,
+  not an exception.
+* That holds for the released sections too.  They are the same list a player reads, and an entry there
+  that rambles can be cut down without waiting for anything - it is describing a build that already
+  shipped, not changing it.
 * A plain `py compiler.py` files the unreleased lines under the version it builds, so leave them where
   they are until then.
 
