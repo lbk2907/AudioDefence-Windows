@@ -943,6 +943,8 @@ class SettingsScreen(ViewControllerScreen):
 @register('ADPauseViewController')
 class PauseScreen(SettingsScreen):
     """ADPauseViewController (tag-2781 view #27): the settings panel plus Resume and End Game."""
+    #: the pause screen is inside Play, but it is a fight rather than a menu: no coins, no diamonds
+    shows_currencies = False
     page_title = 'Paused'
 
     panel_title = 'Paused'

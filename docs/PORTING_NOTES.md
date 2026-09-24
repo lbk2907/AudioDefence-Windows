@@ -859,6 +859,14 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   the armory anyway in the tail call at 0x0761b8 - so one press closed the weapon page *and* threw you out
   of the armory, skipping the list.  Back now matches Escape (`accessibility_perform_escape`): it closes the
   detail and leaves the cursor on the row it was opened from, and a second press leaves the armory.
+* The coins and the diamonds belong to Play (user request).  Each screen decides for itself in the original
+  (`setCurrenciesVisibility:` 0x10001d4b0 and `setDiamonsdsVisibility:` 0x10001d5c8 in its `viewDidLoad`),
+  and what falls out of that has no pattern: Settings shows them, the Play menu does not, the challenge list
+  does, the screen after a challenge does not.  They are shown from the Play menu until the player is back
+  at the main menu instead (`App.in_play`, set by `go_to_play_menu` and cleared by `go_to_main_menu`;
+  `StatusBar._wanted` has the last word, whatever a screen asks for), so every menu under Play has them -
+  a mode added later without being told to - and nothing else does.  A screen inside Play can still keep
+  them off with `shows_currencies = False`, which the pause screen does, being a fight rather than a menu.
 * The power-up page reads like the weapon page (user request).  `ADArmoryPowerUpUpgraderViewController` is
   added to the armory's own view and made modal (`addSubview:` 0x10003b68c, `setAccessibilityViewIsModal:1`
   0x10003b6d8), and a modal view hides all of its siblings - the status bar among them - so the one page
