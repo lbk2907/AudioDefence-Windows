@@ -910,6 +910,12 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   value, so 66.6 per cent is announced as 66; and a weapon that has never been fired has shotsHit /
   shotsFired = 0 / 0, which is nan, so its row is read out as "accuracy, nan percent".  The figure is spoken
   to one decimal instead, and a weapon with no shots says so.
+* PORT ADDITION: the launcher names a missing package rather than handing over a traceback
+  (`AudioDefence.py`, `PACKAGES`).  Somebody downloaded the repository's own zip - GitHub's Code, Download
+  ZIP, which unpacks as `AudioDefence-Windows-master` - believing it was the build, ran `AudioDefence.py`
+  with a bare Python and got `ModuleNotFoundError: No module named 'pygame'` in crash.txt.  A missing one of
+  ours now says which package it is and the line that installs them all, in the console, in crash.txt and
+  out loud; anything else still reports the traceback as before.
 * PORT ADDITION: a line built from parts is joined with a full stop, and not a second one where a part
   already ends a sentence of its own - a stop, a mark, a colon (`screens.joined`, `ENDS_A_SENTENCE`).  An
   alert is two of those in a row: "Not enough Coins!. You don't have enough Coins ... playing Endless

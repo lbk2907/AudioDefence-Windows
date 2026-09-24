@@ -23,6 +23,7 @@ Being killed by a Berserk counts. Its own tally stayed at zero however many time
 Skipping the intro with Cross no longer presses Play as well, which started a game you did not ask for.
 Closing a weapon page and equipping a weapon click, like every other button in the armory.
 An alert no longer reads a stop that is already there - "Not enough Coins!. ... Endless Mode.. OK" is now read as it is written.
+Running the source without its packages now says which one is missing and how to install it, instead of handing you a traceback.
 
 26.09.22-2:
 You can turn with buttons on a game controller instead of a stick: the D-pad to begin with, and Settings, Joystick can move them.
