@@ -21,6 +21,8 @@ Your coins and diamonds are shown in the menus under Play, whichever mode you ar
 The Announcer switch and the game's volume are kept with your other settings now, not with your progress. Both start at their default once, and everything else is as you left it.
 Being killed by a Berserk counts. Its own tally stayed at zero however many times it got you, and your Deaths total missed those too.
 Skipping the intro with Cross no longer presses Play as well, which started a game you did not ask for.
+Closing a weapon page and equipping a weapon click, like every other button in the armory.
+An alert no longer reads a double full stop before its button.
 
 26.09.22-2:
 You can turn with buttons on a game controller instead of a stick: the D-pad to begin with, and Settings, Joystick can move them.

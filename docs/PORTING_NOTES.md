@@ -892,6 +892,14 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   place of the nib's bare "Back" (`voiceOverBack`, 0x10004d848), and sits below the status bar so both
   pages read in the same order; and the title carries the level, as the weapon page's does, where
   `loadInformation` 0x10004da74 has the name alone and nothing on the page said what you already had.
+* Closing a weapon page and equipping a weapon click (user request).  Only `ADButtonWithFont` plays a sound
+  (`playSound` 0x100073578), and the nib makes these three plain `UIButton`s - `#23` "Close weapon
+  description", `#7` and `#26` "Equip instead of" - so they were the last silent presses in the armory.
+  The power-up page's own button is an `ADButtonWithFont` (`#103`) and always clicked.
+* The power-up page's button says "Close powerup description" (user request), in the game's own spelling -
+  the armory tab is "Powerup" and the original's strings are POWERUP - rather than the hyphen this port
+  wrote first.  The nib's own title for it is "  BACK", with the accessibility label "Back"; the wording
+  follows the weapon page's "Close weapon description", which is the nib's.
 * Opening a weapon from the Loadout tab clicks (user request).  The shop's selection plays one
   (`[self playSound]` at 0x100090a88) and so does the power-ups' (0x10003b53c), but the loadout's
   (`-[Accessible_ADArmoryLoadoutViewController tableView:didSelectRowAtIndexPath:]` 0x10004a264) has none,
@@ -902,6 +910,9 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   value, so 66.6 per cent is announced as 66; and a weapon that has never been fired has shotsHit /
   shotsFired = 0 / 0, which is nan, so its row is read out as "accuracy, nan percent".  The figure is spoken
   to one decimal instead, and a weapon with no shots says so.
+* PORT ADDITION: a line built from parts is joined with a full stop, and not a second one where a part
+  already ends in one (`screens.joined`).  An alert's message ends with one, so "Not enough Coins!. You
+  don't have enough Coins ... playing Endless Mode.. OK" had two before the button's name.
 * PORT ADDITION: every screen names itself as you enter it - "Main Menu. Play, button".  These are the
   game's own names: each of these controllers sends `-[ADStatusBarViewController setPageTitle:]` in its
   `viewDidLoad` (ARMORY, PLAY, CHALLENGE, ZOMBIPEDIA, STATISTICS, INFO, GAME OVER, Credits, Dr Bastard's

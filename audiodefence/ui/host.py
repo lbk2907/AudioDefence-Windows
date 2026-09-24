@@ -8,7 +8,7 @@ import pygame
 
 from ..game import data
 from ..platform.speech import Speech
-from .screens import MenuItem, MenuScreen, PlaceholderScreen, Screen
+from .screens import MenuItem, MenuScreen, PlaceholderScreen, Screen, joined
 
 log = logging.getLogger('ui.host')
 
@@ -19,7 +19,7 @@ class AlertScreen(MenuScreen):
     def __init__(self, host, title: str, message: str, buttons):
         """`buttons` are (label, action) pairs, or (label, action, hint) where a button needs saying more
         about - a PORT ADDITION: UIAlertView buttons have no hints."""
-        super().__init__(host, title=f'{title}. {message}')
+        super().__init__(host, title=joined([title, message]))
         self.items = [MenuItem(button[0], (lambda a=button[1]: (host.pop_overlay(), a and a())),
                                hint=button[2] if len(button) > 2 else None) for button in buttons]
         self.back_action = lambda: host.pop_overlay()

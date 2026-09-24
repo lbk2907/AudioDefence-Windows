@@ -26,7 +26,8 @@ from ..platform.defaults import ns_float_value, ns_int_value
 from ..platform.runloop import RunLoop
 from ..platform.tracker import Tracker
 from ..s3d.engine import S3DEngine
-from .accessibility import Button, View, _is_inside, cross_axis_key, cross_axis_text, menu_tick
+from .accessibility import (Button, View, _is_inside, cross_axis_key, cross_axis_text, menu_tick,
+                            play_button_click)
 from .challenges import _TableLoader
 from .host import AlertScreen, register
 from .viewcontroller import ViewControllerScreen
@@ -72,17 +73,22 @@ class WeaponDescriptionView:
     def load_view(self, parent: View) -> None:
         v = self.view = View('', PAGE, accessible=False, parent=parent, name='#28')
         dx, dy = PAGE[0], PAGE[1]
+        # DIVERGENCE (user request): these three are plain UIButtons in the nib (#23, #7, #26), and only
+        # ADButtonWithFont plays a sound (playSound 0x100073578), so closing the page and equipping a weapon
+        # were the two things in the armory that made none.  They click like everything else now.
         Button('Close weapon description', _offset((0, 0, 203, 47), dx, dy), parent=v, font_button=False,
-               actions=[self.back_button_pressed], name='#23')
+               actions=[self.back_button_pressed, play_button_click], name='#23')
         self.weapon_name = View('', _offset((205, 0, 275, 47), dx, dy), parent=v, name='#65')
         self.weapon_description = View('', _offset((8, 55, 464, 47), dx, dy), parent=v, name='#78')
         self.weapon_stats = View('', _offset((8, 110, 464, 47), dx, dy), parent=v, name='#37')
         self.buy_or_upgrade_button = Button('Buy or upgrade', _offset((8, 186, 151, 42), dx, dy), parent=v,
                                             actions=[self.buy_or_upgrade_button_pressed], name='#54')
         self.equip1_button = Button('Equip instead of ', _offset((174, 186, 154, 42), dx, dy), parent=v,
-                                    font_button=False, actions=[self.equip_slot1_button_pressed], name='#7')
+                                    font_button=False, name='#7',
+                                    actions=[self.equip_slot1_button_pressed, play_button_click])
         self.equip2_button = Button('Equip instead of ', _offset((336, 186, 136, 42), dx, dy), parent=v,
-                                    font_button=False, actions=[self.equip_slot2_button_pressed], name='#26')
+                                    font_button=False, name='#26',
+                                    actions=[self.equip_slot2_button_pressed, play_button_click])
         self.equip3_button = View('', (0, 0, 0, 0), accessible=False, name='equip3Button (not connected)')
         self.view.modal = True                            # setAccessibilityViewIsModal:1 by the tab
         self.parent_table.elements_hidden = True          # [tableView setAccessibilityElementsHidden:YES]
@@ -255,7 +261,7 @@ class PowerUpUpgraderView:
         # and it sits below the status bar, where the weapon page's does (its nib frames are offset by the
         # page's origin), so both pages read the same way round: the bar first, then the way out, then the
         # page itself.  In the nib this button is at the very top, level with the bar
-        self.voice_over_back = Button('Close power-up description', (0, 53.5, 150, 40), parent=v,
+        self.voice_over_back = Button('Close powerup description', (0, 53.5, 150, 40), parent=v,
                                       actions=[self.back_button_pressed], name='#103')
         self.power_up_title = View('', (95, 70, 380, 40), parent=v, name='#124')
         self.power_up_description = View('', (221, 120, 245, 129), parent=v, name='#9 UITextView')

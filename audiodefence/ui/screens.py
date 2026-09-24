@@ -99,6 +99,21 @@ class MenuItem:
         return text
 
 
+def joined(parts) -> str:
+    """PORT ADDITION: the parts of a line, read one after another with a full stop between them - and not
+    a second one where a part already ends in one.  An alert's message does: "...playing Endless Mode.." was
+    that stop and the one put before the button's name."""
+    out = ''
+    for part in parts:
+        part = str(part).strip()
+        if not part:
+            continue
+        if out:
+            out += ' ' if out.endswith('.') else '. '
+        out += part
+    return out
+
+
 class MenuScreen(Screen):
     title = ''
 
@@ -123,7 +138,7 @@ class MenuScreen(Screen):
         if self.items:
             self.index = min(self.index, len(self.items) - 1)
             parts.append(self.items[self.index].spoken())
-        self.speak('. '.join(parts))
+        self.speak(joined(parts))
 
     def current(self) -> MenuItem | None:
         return self.items[self.index] if self.items else None

@@ -594,7 +594,7 @@ can be checked against the binary or put back. Listed below are the ones you wou
 rest are internal — analytics that only log locally, a sanity check that only printed, an undefined return
 value nothing reads.
 
-There are **119 divergences** and **15 original quirks kept on purpose** in the notes, of which 71 are
+There are **121 divergences** and **15 original quirks kept on purpose** in the notes, of which 72 are
 listed here.
 
 ### 1. Windows standing in for a phone
@@ -658,6 +658,8 @@ nothing, or says something no keyboard player can act on.
   instead of closing the page and the armory together.
 - **Opening a weapon from the Loadout tab clicks**, the way opening one in the Weapons tab, or a power-up,
   already did. The loadout was the one way into a weapon page the original left silent.
+- **Closing a weapon page and equipping a weapon click too.** Those three buttons are plain ones in the
+  original, and only its font buttons make a sound.
 - **Being killed by a Berserk counts.** The enemy kills you from a state the original never reports a death
   from, so its own "killed you" tally stayed at zero however often it got you, and the Deaths total on the
   statistics screen missed those deaths as well.
