@@ -569,6 +569,12 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   state machine would have played and puts the weapon back to Idle; `continuous_stop` is unchanged for the
   ordinary release, where handing over to state 4 is right because the weapon is still being updated.
 
+  It runs *after* 0x1000a9e04's own reload check, and must: it ends by putting the weapon back to Idle, so
+  asked afterwards whether the outgoing gun was reloading the answer was always no, and the interrupt the
+  original does never ran.  The reload went on sounding on a gun that was no longer in hand, where nothing
+  could reach it - not even melee, which interrupts the reload of `currentWeapon` only.  (Until
+  2026-09-25 it ran first, and that is what it cost.)
+
 * A power-up in hand stops when the player dies (user request).  `stopAllEnemiesAfterPlayerDeathByEnemy
   Name:` 0x1000c71b4 stops the enemies, the diamonds and the passers-by, and leaves the power-up running:
   the Minigun fires on into the death overlay, and the wind and the coil go on with it, until the run is

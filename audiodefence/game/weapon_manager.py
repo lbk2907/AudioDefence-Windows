@@ -269,10 +269,14 @@ class WeaponManager:
 
     def select_next_weapon(self) -> None:                 # 0x1000a9e04
         cw = self.current_weapon
+        if cw is not None and (cw.state == 6 or cw.state == 8):
+            # the reload goes first: `stop_firing_now` ends by putting the weapon back to state 0, so
+            # asking afterwards whether it was reloading always answered no, and 0x1000a9e04's own check
+            # never ran.  The reload was left sounding on a gun that was no longer in hand, where nothing
+            # could stop it - not even melee, which only reaches `current_weapon`.
+            cw.interrupt_reload()
         if cw is not None:
             cw.stop_firing_now()                          # PORT ADDITION: it is not the gun in hand now
-        if cw is not None and (cw.state == 6 or cw.state == 8):
-            cw.interrupt_reload()
         self.current_weapon_index = self.current_weapon_index + 1
         if not (self.current_weapon_index < len(self.weapons_array or [])):
             self.current_weapon_index = 0
