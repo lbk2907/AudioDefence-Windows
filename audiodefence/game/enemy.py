@@ -288,6 +288,14 @@ class Enemy:
             self.aggressive()
         elif self._state == 2:
             self.walk()
+        elif self._state == 8:
+            # DIVERGENCE: 0x10005fe54 answers for states 2 and 3 only (user request).  A hit stops the
+            # enemy's own loop so the pain sound can be heard and asks for it back when that sound ends
+            # (`play_hit_sound_for_damages`), but a Berserk charging the player is in state 8, which this
+            # does not answer - so the growl stopped at the first hit and never came back, and the thing
+            # running at you ran at you in silence.  `berserk` cannot be called to bring it back: it
+            # returns at once when the state is already 8, being the method that sets it.
+            self.play_any_sound_containing('_aggressive', True, True)
 
     def dodge(self) -> None:                              # 0x10005fefc
         self.set_state(7)

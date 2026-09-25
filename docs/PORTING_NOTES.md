@@ -231,6 +231,15 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   cards are dealt) answers False and stays silent.  `MenuScreen` clicks behind its own guard, which is the
   same question asked of a screen that has no nib.  Silence means nothing happened.
 
+* A Berserk charging the player keeps its growl when it is hit (user request).  A hit stops the enemy's
+  own loop so the pain sound can be heard and asks for it back when that sound ends
+  (`-[ADEnemy playHitSoundForDamages:]` 0x100062db8), through `walkOrAgressive` 0x10005fe54 - which answers
+  for state 2 and state 3 and nothing else.  A woken Berserk charges in state 8, so the first shot that
+  landed on it silenced it for good: it ran the player down without a sound, while its hit sounds went on
+  playing, which is what made it look like the sound had been lost rather than stopped.  State 8 now starts
+  the "_aggressive" loop again.  `berserk` 0x100060824 cannot be used for that - it returns at once when
+  the state is already 8, being the method that sets it.
+
 * An alert's buttons click too (user request).  `UIAlertView`'s buttons are the system's, not
   `ADButtonWithFont`s, so the original's "Not enough Coins!" closes in silence; in the port the alert is a
   screen of its own and its OK is the only thing on it, so pressing it sounds like pressing a button.  The
