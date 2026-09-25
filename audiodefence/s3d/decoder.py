@@ -166,5 +166,37 @@ def lead_in(path: str, floor: float = 0.002, most: float = 0.25) -> float:
     return min(float(np.argmax(loud)) / float(rate), most)
 
 
+def tail_out(path: str, share: float = 0.05, most: float = 0.02) -> float:
+    """PORT ADDITION: how long a file is quiet at its end, in seconds.
+
+    The mirror of `lead_in`, for a sound that loops.  OpenAL goes back to the first sample, so quiet at the
+    end is heard as a gap every time round - the Minigun power-up's fire ends in six to thirteen
+    milliseconds of it, which is the seam heard once every ten seconds.
+
+    Quiet is measured against the file's own peak rather than the fixed floor `lead_in` uses, because this
+    is a fade rather than digital silence: a twentieth of the peak, a tenth and a fifth all find the same
+    edge in both of those recordings, so the share is not a delicate number.
+
+    `most` is 20 milliseconds, and it matters: quiet that a sound *means* to have must be left alone.  Over
+    the game's looping recordings the two kinds sit well apart - the fades run 0.8, 3.2, 6.0, 10.8 and 12.9
+    milliseconds, and the next thing up is 32, then 77, then the Tactical Rifle's low-ammo loop at 150,
+    which is the rest between its beeps and would be heard as a stumble if it were cut.  As `lead_in`, only
+    a file the decoder already holds is measured.
+    """
+    with _lock:
+        hit = _cache.get(path)
+    if hit is None:
+        return 0.0
+    data, rate = hit
+    if not rate or not len(data):
+        return 0.0
+    mono = data.mean(axis=1) if data.ndim > 1 else data
+    loud = np.abs(mono) > float(np.abs(mono).max()) * share
+    if not loud.any():
+        return 0.0
+    quiet = float(int(np.argmax(loud[::-1]))) / float(rate)
+    return quiet if quiet <= most else 0.0     # longer than that is the sound's own: leave all of it
+
+
 def exists(path: str) -> bool:
     return os.path.isfile(path)

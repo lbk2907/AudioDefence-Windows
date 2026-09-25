@@ -231,6 +231,19 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   cards are dealt) answers False and stays silent.  `MenuScreen` clicks behind its own guard, which is the
   same question asked of a screen that has no nib.  Silence means nothing happened.
 
+* A looping sound is played without the quiet at the end of its recording (user request).  OpenAL loops
+  back to the first sample, so a recording that fades out over its last few milliseconds has a hole in it
+  once every time round - the Minigun power-up's fire ends 3% and 2% of its own level down, heard as a
+  seam every ten seconds.  A sound played looping now takes its own buffer with that tail cut off
+  (`S3DEngine.acquire_buffer` with `LOOPED`, `decoder.tail_out`), the mirror of the `skip_to` that already
+  starts a sound past its opening silence - and, as there, the files are left alone.
+
+  The cut is capped at 20 milliseconds, because quiet a sound *means* to have must not be touched: across
+  the game's looping recordings the fades run 0.8 to 12.9 ms and the next thing up is 32, then 77, then
+  the Tactical Rifle's low-ammo loop at 150, which is the rest between its beeps.  Anything past the cap
+  is left whole rather than shortened.  The untrimmed buffer is kept as well, since the same recording can
+  be played both ways.
+
 * An alert's buttons click too (user request).  `UIAlertView`'s buttons are the system's, not
   `ADButtonWithFont`s, so the original's "Not enough Coins!" closes in silence; in the port the alert is a
   screen of its own and its OK is the only thing on it, so pressing it sounds like pressing a button.  The

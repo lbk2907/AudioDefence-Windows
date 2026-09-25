@@ -44,6 +44,10 @@ TWO_PI = 6.28318548                # the float constant the engine compares agai
 PI_F = 3.14159274
 DISPATCH_INTERVAL = 0.009999999    # dispatch_time(0, 0x98967f)
 
+#: PORT ADDITION: what marks a buffer variant as the looping one, whose trailing quiet is cut off so the
+#: loop has no seam in it (`acquire_buffer`, `decoder.tail_out`).
+LOOPED = ' looped'
+
 
 # =============================================================================================== engine
 class S3DEngine:
@@ -233,12 +237,20 @@ class S3DEngine:
     # --- OpenAL buffers --------------------------------------------------------------------------
     def acquire_buffer(self, path: str, variant: str, on_bus: bool = False) -> tuple[int, float, int]:
         """Returns (al buffer, duration seconds, file channel count).  Buffers belong to a device: sounds on
-        the reverb bus get their own copy."""
+        the reverb bus get their own copy.
+
+        A variant ending in LOOPED is the same sound with the quiet at its end cut off (`decoder.tail_out`),
+        and is kept apart from the untrimmed one: the same file can be played both ways."""
         al = self.bus_al if on_bus else self.al
         key = (path, variant, on_bus)
         entry = self._buffers.get(key)
         data, rate = decoder.decode(path)
         channels = data.shape[1]
+        if variant.endswith(LOOPED):
+            variant = variant[:-len(LOOPED)]
+            cut = int(decoder.tail_out(path) * rate)
+            if 0 < cut < len(data):
+                data = data[:len(data) - cut]
         duration = data.shape[0] / float(rate) if rate else 0.0
         if entry is None:
             if variant == 'mono':
@@ -872,6 +884,8 @@ class S3DSound:
         if not self.loaded:
             return
         variant = 'mono' if self.spatialized else ('stereo' if self.channels == 2 else 'center')
+        if self.looping:                                             # PORT ADDITION: without the seam
+            variant += LOOPED
         # sendToReverb connects the FanOut to dryMixer and wetMixer: the port plays such a sound on the bus
         on_bus = self.send_to_reverb and self.engine.bus_al is not None
         if on_bus != self._on_bus:
