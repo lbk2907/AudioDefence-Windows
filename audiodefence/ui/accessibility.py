@@ -467,10 +467,20 @@ class AccessibleScreen(Screen):
             elif prefix:
                 self.speak(prefix)
 
-    def accessibility_perform_escape(self) -> None:
+    def accessibility_perform_escape(self) -> bool:
+        """Go back, and say whether there was anywhere to go.
+
+        PORT ADDITION: the answer is what makes the sound (`key_down`).  Pressing Back and pressing Escape
+        run the same method - the click lives on the button, not on what it does - so the two ways of
+        leaving a screen sounded different.  A screen that closes something of its own instead, like a
+        weapon page or an open list, overrides this and answers True for that; one that is busy answers
+        False and stays silent, so silence means nothing happened.
+        """
         # -[ADViewController accessibilityPerformEscape] 0x1000728e4
-        if self.has_escape:
-            self.back_button_pressed()
+        if not self.has_escape:
+            return False
+        self.back_button_pressed()
+        return True
 
     # REMOVED (user request): the magic tap.  VoiceOver's two-finger double tap is a gesture with no
     # keyboard equivalent on iOS, and the port had bound it to F2 - a second way to press a button that
@@ -524,4 +534,5 @@ class AccessibleScreen(Screen):
             if self.focus is not None and self.focus in self.elements():
                 self.focus.activate(shift)
         elif k in (pygame.K_ESCAPE, pygame.K_BACKSPACE):
-            self.accessibility_perform_escape()
+            if self.accessibility_perform_escape():
+                play_button_click()                       # PORT ADDITION: as pressing Back does

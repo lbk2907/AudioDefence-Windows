@@ -927,10 +927,10 @@ class SettingsScreen(ViewControllerScreen):
 
     # PORT ADDITION: a row's list of choices takes Escape and Back first, closing itself rather than the
     # screen - the armory does the same for an open weapon page (armory.accessibility_perform_escape)
-    def accessibility_perform_escape(self) -> None:
+    def accessibility_perform_escape(self) -> bool:
         if self.control_scheme.close_choices():
-            return
-        super().accessibility_perform_escape()
+            return True
+        return super().accessibility_perform_escape()
 
     def back_button_pressed(self) -> None:                # 0x1000af948
         if self.control_scheme.close_choices():

@@ -727,14 +727,14 @@ class ArmoryScreen(ViewControllerScreen):
         if detail is not None and hasattr(detail, 'back_button_pressed'):
             detail.back_button_pressed()
 
-    def accessibility_perform_escape(self) -> None:
+    def accessibility_perform_escape(self) -> bool:
         # DIVERGENCE: -[ADArmoryViewController backButtonPressed] 0x100076080 dismisses the armory even
         # when a detail view has taken the back button, so Escape inside a weapon or a power-up threw you
         # out of the armory altogether.  Escape closes the detail first, as its own Back button does.
         if self.detail_view is not None:
             self.close_detail_view()
-            return
-        super().accessibility_perform_escape()
+            return True
+        return super().accessibility_perform_escape()
 
     # --- alerts ----------------------------------------------------------------------------------
     def show_not_enough_money_alert(self, delegate=None) -> None:   # 0x1000768d4

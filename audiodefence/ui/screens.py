@@ -172,7 +172,8 @@ class MenuScreen(Screen):
             item.action()
 
     def key_down(self, event) -> None:
-        from .accessibility import menu_tick, navigation_key   # here: accessibility imports this module
+        from .accessibility import (menu_tick, navigation_key,   # here: accessibility imports this
+                                    play_button_click)           # module
         if menu_music_volume_key(self, event):
             return
         k = event.key
@@ -186,6 +187,7 @@ class MenuScreen(Screen):
         elif k in (pygame.K_RETURN, pygame.K_KP_ENTER):   # not Space: it is the fire key in a game
             self.activate()
         elif k == pygame.K_ESCAPE and self.back_action is not None:
+            play_button_click()                           # PORT ADDITION: as pressing Back does
             self.back_action()
 
 

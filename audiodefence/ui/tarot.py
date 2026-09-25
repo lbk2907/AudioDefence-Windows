@@ -411,10 +411,10 @@ class TarotScreen(ViewControllerScreen):
     #: and that was taken off again (user request): the deal is two seconds, the cards speak for themselves
     #: at the end of it, and a sentence in the way of them is one more thing to sit through.
 
-    def accessibility_perform_escape(self) -> None:
+    def accessibility_perform_escape(self) -> bool:
         if self.dealing:
-            return
-        super().accessibility_perform_escape()
+            return False                                  # nothing happened, so nothing is heard
+        return super().accessibility_perform_escape()
 
     def back_button_pressed(self) -> None:                # 0x1000364e8
         if self.dealing:                                  # the button itself is dimmed; this is the rest

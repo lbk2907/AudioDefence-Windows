@@ -221,6 +221,16 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
 * The settings rows play `click_button` when pressed.  The original's accessible table is silent, but its
   sighted twin's rows are `ADButtonWithFont`s, which click (`-[ADButtonWithFont playSound]` 0x100073578) -
   and the port's categories are pressed like buttons, so they click like them.
+* Escape and Circle click, as pressing Back does (user request).  They already run the same method the
+  Back button runs - `-[ADViewController accessibilityPerformEscape]` 0x1000728e4 calls
+  `backButtonPressed` - but the click lives on `ADButtonWithFont`, not on what the button does, so leaving
+  a screen by key was silent and leaving it by button was not.  Rather than a click at each place that
+  goes back, `accessibility_perform_escape` now answers whether it went anywhere and the key site makes
+  the sound once; a screen that takes Escape for something of its own (the armory closing a weapon page,
+  Settings closing an open list) answers True for that, and one that is busy (the tarot screen while the
+  cards are dealt) answers False and stays silent.  `MenuScreen` clicks behind its own guard, which is the
+  same question asked of a screen that has no nib.  Silence means nothing happened.
+
 * An alert's buttons click too (user request).  `UIAlertView`'s buttons are the system's, not
   `ADButtonWithFont`s, so the original's "Not enough Coins!" closes in silence; in the port the alert is a
   screen of its own and its OK is the only thing on it, so pressing it sounds like pressing a button.  The
