@@ -28,6 +28,9 @@ sys.path.insert(0, ROOT)
 
 from audiodefence import localization, paths                       # noqa: E402
 
+#: the file a translator works in until they rename it (tools/make_language.py)
+TEMPLATE = 'template'
+
 #: Phrase fields of the original game's data that the player reads or hears.  Compared without case: the
 #: same field is spelt differently from file to file (Tips and tip, Description and description, Bio).
 FIELDS = {'title', 'subtitle', 'description', 'objective', 'tip', 'tips', 'displayname', 'upgradetext',
@@ -230,7 +233,11 @@ def main() -> int:
                         help='a language to check; the default is every file under localization/')
     args = parser.parse_args()
 
-    languages = args.language or [code for code in localization.available() if code != localization.ENGLISH]
+    # The template is a language being written (tools/make_language.py), so it is unfinished by
+    # definition and would fail every run it was swept into.  Named on the command line it is checked
+    # like any other, which is how its author sees how far they have got.
+    languages = args.language or [code for code in localization.available()
+                                  if code not in (localization.ENGLISH, TEMPLATE)]
     if not languages:
         print('no language files under localization/: nothing to check')
         return 0

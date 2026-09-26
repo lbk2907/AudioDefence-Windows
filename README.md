@@ -81,20 +81,29 @@ A language is a single file, `localization/<code>.json`: a flat map from the
 English phrase to the phrase in that language. Nothing is compiled and no code
 is written — the phrases are data.
 
-1. Run `py tools/make_language.py <code>` — `de`, `fr`, `ja`. It writes
-   `localization/<code>.json` holding every phrase the port can put in front of
-   a player, each one empty, so you have the list rather than having to find it.
-2. Fill in the empty phrases. An empty one stays English, so a part-finished
-   file works: what is translated is translated, and the rest is not.
-3. Add the code and the language's own name to `LANGUAGES` in
-   `audiodefence/game/parameters.py`, which is what the Settings row offers.
-4. Run `py tools/verify_localization.py`. It walks every phrase the port can
-   show or speak — from the port's own code and from the game's data — and
-   fails if one is still English, so a language cannot quietly fall behind as
-   the port grows.
+1. Run `py tools/make_language.py` — nothing after it. It writes
+   `localization/template.json`, holding every phrase the port can put in front
+   of a player, each one empty, so you have the list rather than having to find
+   it.
+2. Fill in the empty phrases, in any order. An empty one stays English, so the
+   file works from the first line: what is translated is translated, and the
+   rest is not.
+3. **You can hear it while you write it.** While `template.json` is there the
+   game offers it in the Language row as *Template, being translated* — no code
+   chosen, nothing renamed.
+4. When it is ready, rename it to the language's code — `de.json`, `fr.json`,
+   `ja.json` — and add that code and the language's own name to `LANGUAGES` in
+   `audiodefence/game/parameters.py`, which is what the Language row offers.
+5. Run `py tools/verify_localization.py`, which fails if a phrase a player can
+   reach is still English, so a language cannot quietly fall behind as the port
+   grows. It skips `template.json`, which is unfinished by definition; ask for
+   it by name — `--language template` — to see how far you have got.
 
-Run `make_language.py` again whenever the port gains text: a file that exists
-keeps everything already translated and only the new phrases arrive empty.
+`template.json` is never committed: it belongs to whoever is writing it.
+
+Run `make_language.py` again whenever the port gains text. A file that is
+already there keeps every phrase translated and only the new ones arrive empty;
+nothing is ever removed.
 
 A language arrives with a release, because the phrase files are built into the
 game. Adding one to a copy you already have means waiting for the next build.
@@ -1033,7 +1042,7 @@ it — and compare side by side.
     py tools/verify_stats.py                          every weapon and enemy vs the plists
     py tools/verify_updater.py                        the updater, end to end, offline
     py tools/verify_localization.py                   every phrase a player reads, in each language
-    py tools/make_language.py de                      a language file to fill in, or refresh one
+    py tools/make_language.py                         localization/template.json, to fill in
 
 The digests are condensed and sometimes drop code that matters — when a branch
 does not add up, read the `.s` listing for the same function. Annotation

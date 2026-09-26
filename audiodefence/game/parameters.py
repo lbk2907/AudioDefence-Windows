@@ -286,10 +286,25 @@ class GameParameters:
     #: who does not choose one sees exactly what the port always showed.
     LANGUAGES = (('en', 'English'), ('ru', 'Русский'))
     DEFAULT_LANGUAGE = 'en'
+    #: what `tools/make_language.py` writes, and what a translator works in before choosing a code for it.
+    #: Offered only while the file is there, and never committed, so nobody but its author ever sees it.
+    TEMPLATE_LANGUAGE = ('template', 'Template, being translated')
+
+    def languages(self) -> tuple:
+        """The languages to offer: the ones this build carries, and the template file while one exists.
+
+        PORT ADDITION: a translator fills in `localization/template.json` and can hear it in the game before
+        renaming it to a language code, which is the point at which it becomes a language like any other.
+        """
+        from ..localization import file_for
+        import os
+        if os.path.isfile(file_for(self.TEMPLATE_LANGUAGE[0])):
+            return self.LANGUAGES + (self.TEMPLATE_LANGUAGE,)
+        return self.LANGUAGES
 
     def language(self) -> str:
         value = self.defaults.object('language')
-        return value if value in dict(self.LANGUAGES) else self.DEFAULT_LANGUAGE
+        return value if value in dict(self.languages()) else self.DEFAULT_LANGUAGE
 
     def set_language(self, value: str) -> None:
         from ..localization import load                   # here: localization asks this module for it

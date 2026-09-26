@@ -30,3 +30,6 @@ readme.html
 
 # Building OpenAL Soft for the Mac (tools/build_openal_mac.sh): the source and the build, never committed
 vendor/build-openal/
+
+# A language being written: tools/make_language.py writes it, its author renames it when it is ready
+localization/template.json

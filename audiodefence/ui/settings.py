@@ -153,7 +153,7 @@ class ControlSchemePanel:
         elif self.category == 'misc':                     # PORT ADDITION: everything else
             # Language leads the tab: it decides what every other row on every screen is read in,
             # so a player who wants it should not have to walk past the rest to reach it (user request).
-            t.cell('Language', dict(params.LANGUAGES)[params.language()],
+            t.cell('Language', dict(params.languages())[params.language()],
                    hint="The language the port's own text is shown and spoken in. English is what "
                         'the port was written in; another language translates it as it is read, which '
                         'takes effect as each screen is opened again. Press Enter for the list.',
@@ -550,7 +550,7 @@ class ControlSchemePanel:
         SAPI 5 voice are.  Each language names itself in its own script, so stepping through them reads
         one out in a language the player may not have chosen yet; the list says them once."""
         params = GameParameters.shared()
-        self.open_choices('Language', list(params.LANGUAGES), params.language(), self.take_language)
+        self.open_choices('Language', list(params.languages()), params.language(), self.take_language)
 
     def take_language(self, choice: str) -> None:
         """The chosen language, read in at once, so the rows rebuilt after this and every screen opened
@@ -558,7 +558,7 @@ class ControlSchemePanel:
         params = GameParameters.shared()
         params.set_language(choice)                       # which loads it (GameParameters.set_language)
         self.reload_data()
-        self.announce('Language: %s' % dict(params.LANGUAGES)[choice])
+        self.announce('Language: %s' % dict(params.languages())[choice])
 
     def toggle_key_names(self) -> None:
         params = GameParameters.shared()
