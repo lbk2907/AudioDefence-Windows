@@ -20,45 +20,20 @@ log = logging.getLogger('powerups')
 PI_D = 3.14159265
 
 
-#: PORT ADDITION: a fifth level, which the Powered Power Ups tarot card is the only way to reach.
-#:
-#: The card says "All Power Ups are fully levelled up for this game" and gives one level, and only when
-#: the data has a next one - so for a player who has bought every upgrade it does nothing at all, while
-#: telling them it is one of the best cards in the deck.  They keep it, and play a run with one of their
-#: two tarot slots empty.  This is the fifth level that player gets instead (user request).
-#:
-#: It is not for sale and cannot become so by accident: the armory stops at four in three places of its
-#: own (`upgrade_button_pressed` "level > 3", and two "level >= 4" tests), which read the inventory and
-#: not this table.  Nothing but the card reads a fifth level.
-#:
-#: The numbers carry each power-up's own progression one step: the Minigun's duration goes up by 2.5 a
-#: level, the Tesla's kills by one, and the Fireworks' damage and the Tornado's reach both take the +2
-#: their own last step took.  `frequency` is not here: its cooldown is read straight from the inventory's
-#: level (`reset_power_up_cooldown` 0x10004b640, which does not go through this lookup), so the card has
-#: never touched it, in the original or here.
-FIFTH_LEVEL = {
-    'minigun': {'duration': 15},                      # 5, 7.5, 10, 12.5
-    'fireworks': {'damages': 9},                      # 3, 4, 5, 7
-    'tesla': {'kills': 5},                            # 1, 2, 3, 4
-    'tornado': {'blowDistance': 7},                   # 1, 2, 3, 5
-}
-
-
 def _level_dictionary(name: str) -> dict | None:
     """The level lookup shared by every preload/use:
-    level = inventory level; with betterPowerUps, +1 only when "level_<level+1>" exists - or the port's
-    own fifth level (FIFTH_LEVEL) when the data has run out, so the card is worth something to a player
-    who has bought every upgrade."""
+    level = inventory level; with betterPowerUps, +1 only when "level_<level+1>" exists.
+
+    A fifth level exists for four of the power-ups (`additions.fifth_power_up_level`), so a player who
+    has bought every upgrade gets one from Powered Power Ups where the original gave nothing.  This
+    method is the original's, untouched: the level is in the data it reads."""
     from .inventory import Inventory
     from .weapon_manager import WeaponManager
     d = WeaponManager.shared().dictionary_for_powerup_with_name(name) or {}
     level = Inventory.shared().level_for_power_up(name)
     bonus = 0
     if GameModifiers.shared().betterPowerUps:
-        if d.get(f'level_{level + 1}') is not None:
-            bonus = 1
-        elif name in FIFTH_LEVEL:                     # DIVERGENCE: the data ends here; the port does not
-            return FIFTH_LEVEL[name]
+        bonus = 1 if d.get(f'level_{level + 1}') is not None else 0
     return d.get(f'level_{bonus + level}')
 
 

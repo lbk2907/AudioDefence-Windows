@@ -1112,20 +1112,35 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   English.  The recorded audio - the announcer and the game's spoken lines - stays English: it is sound, not
   text.
 
+* PORT ADDITION: the additions overlay - the plists are the original, and everything the port adds is in
+  code (user request).  `game/` holds Somethin' Else's files exactly as they shipped them: not re-encoded,
+  not appended to, not corrected.  They are binary plists, a rewrite of one is an unreviewable diff, and on
+  a Mac a player can open them, so a port that wrote into them would leave nobody able to say which parts
+  of the game were the game.  `audiodefence/game/additions.py` is where the port's own content is declared
+  instead, and `data._load` hands each plist through whatever is registered for it as it is read, so an
+  addition is seen by all twenty-two places that read the original's data without any of them knowing.
+  **Additions only, never replacements**: `new_key` refuses a key the original already has, so what is in
+  `game/` is theirs and what is in `additions.py` is ours, and changing a value the original set stays a
+  divergence in the code that reads it, where it can be seen and written down here.  An addition that
+  raises is logged and skipped rather than stopping the game from loading.  Sound is the limit: a new enemy
+  or weapon that makes a noise needs recordings, and the engine finds those by name under `game/sounds/`,
+  which is their folder - audible content would need a folder of the port's own and an engine that looks in
+  both.  This is for data.
+
 * PORT ADDITION: a fifth power-up level, which the Powered Power Ups tarot card is the only way to reach
   (user request, and the first content the port adds rather than restores).  The card says "All Power Ups
   are fully levelled up for this game" and `_levelDictionary` gives one level, and only when the data has
   a next one (`level_<level+1>`): a player who has bought every upgrade therefore gets nothing at all from
   it, while being told it is one of the best cards in the deck.  They keep it and play a run with one of
-  their two tarot slots empty.  `powerups.FIFTH_LEVEL` is what that player gets instead - the Minigun 15
-  seconds, the Fireworks 9 damage, the Tesla 5 kills, the Tornado 7 of reach - each carrying its own
-  progression one step.
+  their two tarot slots empty.  `additions.FIFTH_POWER_UP_LEVEL` is what that player gets instead - the
+  Minigun 15 seconds, the Fireworks 9 damage, the Tesla 5 kills, the Tornado 7 of reach - each carrying its
+  own progression one step.
 
-  It is in the port's code and not in `Weapons.plist`: the file is Somethin' Else's, it is a binary plist
-  whose rewrite would be an unreviewable diff, and the tier is the port's own.  It cannot be bought, and
-  not by accident either: the armory stops at four in three places of its own (`upgrade_button_pressed`
-  tests `level > 3`, and two more test `level >= 4`), all of which read the inventory rather than this
-  table.  `frequency` is deliberately absent: `resetPowerUpCooldown` 0x10004b640 reads its level straight
+  It arrives through the overlay above, as a `level_5` on four of the `PowerUps` entries, so the original's
+  own rule does the work and `_levelDictionary` is unchanged: one level up when `level_<level+1>` exists,
+  which is now true once more than it was.  It cannot be bought, and not by accident either: the armory
+  stops at four in three places of its own (`upgrade_button_pressed` tests `level > 3`, and two more test
+  `level >= 4`), all of which read the inventory rather than this table.  `frequency` is deliberately absent: `resetPowerUpCooldown` 0x10004b640 reads its level straight
   from the inventory and not through `_levelDictionary`, so the card has never reached the cooldown, in
   the original or here.
 

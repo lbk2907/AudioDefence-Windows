@@ -8,9 +8,6 @@ from functools import lru_cache
 
 from .. import paths
 from .. import localization
-from .. import localization
-from .. import localization
-from .. import localization
 
 
 @lru_cache(maxsize=None)
@@ -19,7 +16,9 @@ def _load(name: str):
     if not os.path.isfile(path):
         return None
     with open(path, 'rb') as fh:
-        return _correct(plistlib.load(fh))                # PORT ADDITION: the original's typos (TYPOS)
+        data = _correct(plistlib.load(fh))                # PORT ADDITION: the original's typos (TYPOS)
+    from .additions import apply_to                       # here: additions read the game's own modules
+    return apply_to(name, data)                           # PORT ADDITION: the port's own content
 
 
 def plist(name: str):
