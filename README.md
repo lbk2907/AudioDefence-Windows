@@ -81,23 +81,22 @@ A language is a single file, `localization/<code>.json`: a flat map from the
 English phrase to the phrase in that language. Nothing is compiled and no code
 is written — the phrases are data.
 
-1. Run `py tools/make_language.py` — nothing after it. It writes
-   `localization/template.json`, holding every phrase the port can put in front
-   of a player, each one empty, so you have the list rather than having to find
-   it.
-2. Fill in the empty phrases, in any order. An empty one stays English, so the
-   file works from the first line: what is translated is translated, and the
-   rest is not.
-3. **You can hear it while you write it.** While `template.json` is there the
-   game offers it in the Language row as *Template, being translated* — no code
-   chosen, nothing renamed.
-4. When it is ready, rename it to the language's code — `de.json`, `fr.json`,
-   `ja.json` — and add that code and the language's own name to `LANGUAGES` in
-   `audiodefence/game/parameters.py`, which is what the Language row offers.
-5. Run `py tools/verify_localization.py`, which fails if a phrase a player can
-   reach is still English, so a language cannot quietly fall behind as the port
-   grows. It skips `template.json`, which is unfinished by definition; ask for
-   it by name — `--language template` — to see how far you have got.
+- run `py tools/make_language.py`, with nothing after it. It writes
+  `localization/template.json`, holding every phrase the port can put in front
+  of a player, each one empty, so you have the list rather than having to find it
+- fill in the empty phrases, in any order. An empty one stays English, so the
+  file works from the first line: what is translated is translated, and the rest
+  is not
+- **you can hear it while you write it.** While `template.json` is there the
+  game offers it in the Language row as *Template, being translated* — no code
+  chosen, nothing renamed
+- when it is ready, rename it to the language's code — `de.json`, `fr.json`,
+  `ja.json` — and add that code and the language's own name to `LANGUAGES` in
+  `audiodefence/game/parameters.py`, which is what the Language row offers
+- run `py tools/verify_localization.py`, which fails if a phrase a player can
+  reach is still English, so a language cannot quietly fall behind as the port
+  grows. It skips `template.json`, unfinished by definition; ask for it by name
+  — `--language template` — to see how far you have got
 
 `template.json` is never committed: it belongs to whoever is writing it.
 
