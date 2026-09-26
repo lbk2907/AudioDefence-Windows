@@ -1112,6 +1112,23 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   English.  The recorded audio - the announcer and the game's spoken lines - stays English: it is sound, not
   text.
 
+* PORT ADDITION: a fifth power-up level, which the Powered Power Ups tarot card is the only way to reach
+  (user request, and the first content the port adds rather than restores).  The card says "All Power Ups
+  are fully levelled up for this game" and `_levelDictionary` gives one level, and only when the data has
+  a next one (`level_<level+1>`): a player who has bought every upgrade therefore gets nothing at all from
+  it, while being told it is one of the best cards in the deck.  They keep it and play a run with one of
+  their two tarot slots empty.  `powerups.FIFTH_LEVEL` is what that player gets instead - the Minigun 15
+  seconds, the Fireworks 9 damage, the Tesla 5 kills, the Tornado 7 of reach - each carrying its own
+  progression one step.
+
+  It is in the port's code and not in `Weapons.plist`: the file is Somethin' Else's, it is a binary plist
+  whose rewrite would be an unreviewable diff, and the tier is the port's own.  It cannot be bought, and
+  not by accident either: the armory stops at four in three places of its own (`upgrade_button_pressed`
+  tests `level > 3`, and two more test `level >= 4`), all of which read the inventory rather than this
+  table.  `frequency` is deliberately absent: `resetPowerUpCooldown` 0x10004b640 reads its level straight
+  from the inventory and not through `_levelDictionary`, so the card has never reached the cooldown, in
+  the original or here.
+
 * PORT ADDITION: key names are spoken as the keys people call them.  pygame's names for the two Enter keys
   are "return" and "enter", which read out as "Return or Enter" and sound like one key said twice; they are
   "Enter" and "Numpad Enter" here, the arrows are "Left Arrow" and so on, and space is "Spacebar".

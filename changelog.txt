@@ -1,5 +1,6 @@
 unrelease:
 While a row in Settings has its list of choices open, the OK button no longer closes Settings. Enter takes a choice and Back leaves the list.
+The Powered Power Ups tarot card is worth something to everyone now. It gives a level beyond the highest you can buy, where before it did nothing at all for a fully upgraded player.
 
 26.09.26-1:
 The game runs on the Mac too, in its own build on the same release. It speaks through VoiceOver, or through the system voice when VoiceOver is off.
