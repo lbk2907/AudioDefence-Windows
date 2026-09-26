@@ -43,10 +43,16 @@ file, **at the end of that block** - it reads in the order things were done.
   "which used to" or a semicolon to hold it together, it is two entries or it is too long.  Thirty words
   is long; the whole file is under thirty for every entry, so a new one that runs past it is a rewrite,
   not an exception.
-* **Only the `unrelease:` block is edited.**  The released sections were cut down once, on 2026-09-24,
-  because they had been written the long way; that is done and they are left alone now.  A version that
-  has shipped is what its players were told at the time, and rewriting it changes the record for no one's
-  benefit.
+* **A line goes under `unrelease:` and nowhere else.**  The version blocks below it - `26.09.26-1:` and
+  every one under that - belong to whoever is writing the game.  Do not add to them, take from them,
+  reword them, reorder them or reflow them, and do not move a line between them.  A version that has
+  shipped is what its players were told at the time.
+
+  This holds whatever the reason looks like: a line in the wrong place, a fault described in a version
+  that has gone out, a phrase that would read better.  Say so and leave it.  It was set aside once, on
+  2026-09-24, when the released sections were cut down because they had been written the long way, and
+  once by hand when the updater came out of the preserved copy - both times because the maintainer asked
+  for exactly that.
 * A plain `py compiler.py` files the unreleased lines under the version it builds, so leave them where
   they are until then.
 
