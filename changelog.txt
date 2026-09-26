@@ -1,5 +1,6 @@
 unrelease:
 The game runs on the Mac too, in its own build on the same release. It speaks through VoiceOver, or through the system voice when VoiceOver is off.
+The game can be played in another language. The Miscellaneous tab in Settings has a Language row; the announcer and the game's own recordings stay in English.
 SAPI 5 responds as quickly as a screen reader does: it starts sooner, stops the moment you interrupt it, and no longer holds the game up while it speaks. The Speech tab in Settings has a Use modern output row for it, on by default. Turning it on or off takes hold at once.
 Press Control to stop whatever is being read out, in the menus or in a game.
 On the Endless screen you can no longer leave while the cards are being dealt.
@@ -23,7 +24,6 @@ Running the source without its packages now says which one is missing and how to
 Going back with Escape, or with Circle on a controller, clicks the same as pressing the Back button.
 A Berserk charging at you keeps making its sound after you shoot it. The first hit silenced it, and it ran you down with nothing to hear.
 Switching weapon while you reload stops the reload sound. It carried on playing on the gun you had put away, where nothing could stop it.
-The game can be played in Russian: Settings, Miscellaneous has a Language row. The announcer and the game's own recordings stay in English.
 
 26.09.22-2:
 You can turn with buttons on a game controller instead of a stick: the D-pad to begin with, and Settings, Joystick can move them.

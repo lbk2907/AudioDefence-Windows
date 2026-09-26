@@ -27,6 +27,11 @@ file, **at the end of that block** - it reads in the order things were done.
 * **Name a screen or a tab in words, not as a path.**  "The Speech tab in Settings", not "Settings,
   Speech": a comma standing for a step only reads as one to somebody who already knows the way, and read
   aloud it is two nouns and a pause.
+* **Say what the game can now do, not which example arrived with it.**  "The game can be played in
+  another language", not "the game can be played in Russian"; "you can turn with buttons on a controller",
+  not the two buttons it shipped with.  A changelog line outlives the thing that prompted it, and a
+  player reading it later should learn what the game is capable of.  Name the particular language,
+  controller or mode in the README, where the list is kept up to date.
 * **A sentence or two, and stop.**  Say what is different now; leave out what it used to do, why it did
   that, how it was measured, and every number that is not the point.  The reasoning, the measurements and
   the addresses belong in `docs/PORTING_NOTES.md`, where they can be looked up by whoever wants them - a
