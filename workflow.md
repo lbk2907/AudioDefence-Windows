@@ -48,13 +48,12 @@ file, **at the end of that block** - it reads in the order things were done.
   reword them, reorder them or reflow them, and do not move a line between them.  A version that has
   shipped is what its players were told at the time.
 
-  This holds whatever the reason looks like: a line in the wrong place, a fault described in a version
-  that has gone out, a phrase that would read better.  Say so and leave it.  Being asked for that change
-  is the one thing that opens a released block - not a good reason, not an obvious improvement, and not
-  a tidy-up that seems in the same spirit as a past one.  It was set aside once, on
-  2026-09-24, when the released sections were cut down because they had been written the long way, and
-  once by hand when the updater came out of the preserved copy - both times because the maintainer asked
-  for exactly that.
+  This holds whatever the reason looks like: a line in the wrong place, a fault described in a version that
+  has gone out, a phrase that would read better.  Say so and leave it.  Being asked for that change is the
+  one thing that opens a released block - not a good reason, not an obvious improvement, and not a tidy-up
+  that seems in the same spirit as a past one.  It was set aside once, on 2026-09-24, when the released
+  sections were cut down because they had been written the long way, and once by hand when the updater came
+  out of the preserved copy - both times because the maintainer asked for exactly that.
 * A plain `py compiler.py` files the unreleased lines under the version it builds, so leave them where
   they are until then.
 
