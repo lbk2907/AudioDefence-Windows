@@ -22,6 +22,10 @@ how to build it; `docs/PORTING_NOTES.md` says what was changed and why.
 `changelog.txt` is what a player reads.  New lines go under the `unrelease:` heading at the top of the
 file, **at the end of that block** - it reads in the order things were done.
 
+* **Write the line.**  A change a player would notice gets one, and whether the `unrelease:` block is
+  empty or already long is not a reason either way.  Nor is "the thing it fixes has not shipped yet":
+  that is a judgement about what a player needs to know, and it is not mine to make.  The one reason not
+  to write a line is being told, for that change, that it does not need one.
 * One entry per line, no wrapping, no bullets, no "Fixed:", no version numbers, no addresses.
 * Plain sentences about what a player notices, not what the code does.
 * **Name a screen or a tab in words, not as a path.**  "The Speech tab in Settings", not "Settings,
