@@ -18,7 +18,7 @@ by Somethin' Else
 #: the whole cast to reach it or past it.
 PORT_CREDITS_TEXT = """The Windows and Mac port
 
-github.com/lbk2907/AudioDefence-Windows
+github.com/lbk2907/AudioDefence
 
 Ported by
 Loh Boon Keat
