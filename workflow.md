@@ -95,6 +95,12 @@ running it again costs the time it takes and says nothing.  So:
 English.  Run it after changing or adding anything a screen says, and put the new phrase in each language
 file - on 2026-09-26 it caught four that a week of changes had left behind.
 
+A line with a substitution in it - "Tarot card number %i : %s" - is never offered to a translator: it is a
+template, and the tool drops it whole (`PLUMBING`).  So a phrase written inside one is invisible, and stays
+English without anything saying so.  Hand that phrase to `localization.translate()` on its own and build the
+line around the result, which the tool does collect.  The third tarot card's note was found this way on
+2026-09-26, after the verifier passed while the phrase it had just gained was nowhere in it.
+
 **A rule needs all of them, not a handful.**  Whenever a change turns on a threshold, a flag or a test that
 will be applied across a whole set - every sound, every screen, every enemy - measure the whole set before
 settling it, and say in the commit how many were looked at.  Twice on 2026-09-25 a rule drawn from the few

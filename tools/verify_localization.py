@@ -50,7 +50,11 @@ LEFT_ALONE = {
 #: text the player can read or hear.
 TEXT_CALLS = {'View', 'Button', 'MenuItem', 'MenuScreen', 'AlertScreen', 'Cell', 'Header', 'Row', 'Item',
               'cell', 'view', 'button', 'label', 'item', 'speak', 'announce', 'set_title', 'setText',
-              'say', 'localized', 'AlertScreen'}
+              'say', 'localized', 'AlertScreen',
+              #: a phrase the code hands to the layer by name is text for the player by definition.  It is
+              #: also the way to give a translator a phrase that sits inside a line with a substitution in
+              #: it, which PLUMBING drops whole: hand the phrase over on its own and build the line round it.
+              'translate'}
 TEXT_KEYWORDS = {'label', 'hint', 'text', 'title', 'message', 'subtitle', 'caption', 'page_title',
                  'copy_label', 'objective', 'description', 'tip'}
 #: `name=` is left out on purpose: it names an element for the port's own lookups ("#39 UITableView"),
