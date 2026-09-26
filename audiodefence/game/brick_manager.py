@@ -98,6 +98,12 @@ class BrickManager:
         self.current_wave = 0
         self.time_elapsed = 0.0
         self.started_main_menu_music = False
+        # PORT ADDITION: Air Drop Inbound.  This runs once per game, which the power-up manager's own
+        # init does not - it is built with the brick manager and lives as long as the app - so the card
+        # is spent here rather than there, and only the first drop of the game is the free one.
+        from .modifiers import GameModifiers
+        if GameModifiers.shared().earlyPowerUp:
+            self.power_up_manager.powerup_cool_down = 0.0
 
     @property
     def mode(self) -> int:                                      # 0x1000c301c

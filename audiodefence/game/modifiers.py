@@ -13,6 +13,13 @@ FLAGS = ('slowerEnemies', 'weakerEnemies', 'moreDamages', 'moreMeleeDamages', 'm
 # setters that exist on the class besides the flags reset by resetModifiers
 EXTRA_SETTERS = ('fullMoon', 'bullshit', 'difficultyModifier')
 
+#: PORT ADDITION: flags the port's own tarot cards set (user request).  They are kept apart from FLAGS so
+#: that list stays what the original's class has - thirty-two of them, in its own order - and a glance says
+#: which effects are Somethin' Else's and which are ours.  Everything that reads FLAGS reads these too:
+#: they are cleared by `reset_modifiers` at the start of every game and accepted by `has_setter`, so a card
+#: carrying one is applied by `applyModifier:` 0x100035da4 exactly as the original's cards are.
+PORT_FLAGS = ('earlyPowerUp', 'luckyNight', 'lessPowerUps', 'lessCoins')
+
 
 class GameModifiers:
     _shared: 'GameModifiers | None' = None
@@ -27,14 +34,14 @@ class GameModifiers:
         return cls._shared
 
     def __init__(self):
-        for f in FLAGS:
+        for f in FLAGS + PORT_FLAGS:
             setattr(self, f, False)
         self.fullMoon = False
         self.bullshit = False
         self.difficultyModifier = 0.0
 
     def reset_modifiers(self) -> None:      # 0x1000de1f0
-        for f in FLAGS:
+        for f in FLAGS + PORT_FLAGS:
             if f == 'tesla':
                 self.set_tesla(False)
             else:
@@ -42,7 +49,7 @@ class GameModifiers:
         self.difficultyModifier = 1.0
 
     def has_setter(self, selector: str) -> bool:
-        return selector in FLAGS or selector in EXTRA_SETTERS
+        return selector in FLAGS or selector in EXTRA_SETTERS or selector in PORT_FLAGS
 
     def apply_setter(self, selector: str, value) -> bool:
         """[ADGameModifiers set<Selector>:YES] when respondsToSelector: says so."""

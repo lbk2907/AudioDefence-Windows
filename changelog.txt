@@ -2,6 +2,7 @@ unrelease:
 While a row in Settings has its list of choices open, the OK button no longer closes Settings. Enter takes a choice and Back leaves the list.
 The Powered Power Ups tarot card is worth something to everyone now. It gives a level beyond the highest you can buy, where before it did nothing at all for a fully upgraded player.
 Endless deals three tarot cards instead of two. The third comes from a deck of its own and cannot be changed, so every hand holds a card you did not pick.
+New tarot cards, good and bad, have joined Dr. Bastard's decks, and the locked third card can draw them too.
 
 26.09.26-1:
 The game runs on the Mac too, in its own build on the same release. It speaks through VoiceOver, or through the system voice when VoiceOver is off.

@@ -1207,6 +1207,38 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   modifier under the same key.  Nothing else moves: `applyAllModifiers` 0x100035a5c still reads the live
   card, and `resetCardsModifiersIfNeeded` 0x1000d42a8 still clears all three keys after an endless game
   lasting over 60 seconds, so a fresh deal still follows a real run.
+* PORT ADDITION: six tarot cards of the port's own, and more to come (user request).  Each deck keeps
+  the subject the original kept it to - level 1 is the arena and what you brought to it, level 2 is the
+  zombies, level 3 is your guns - and each gains as many good cards as bad, so the even split that makes
+  the third card a coin flip stays even.  They are declared in `additions.NEW_CARDS` and dealt by the
+  overlay, so `game/Tarot.plist` is untouched; `additions.new_entry` refuses a title one of their cards
+  already has, which is `new_key`'s counterpart for the plists that are lists.
+
+  Level 3: **Quick Hands** (`fasterReloadTime`) and **Heavy Hands** (`slowerReloadTime`), the two flags
+  below.  Level 1: **Air Drop Inbound** (`earlyPowerUp`) starts the game with the power-up cooldown at 0
+  so the first drop is waiting, which is set in `BrickManager.reset` 0x1000c1a38 because that runs once a
+  game where `-[ADPowerUpManager init]` 0x10004b524 runs once an app; **Lucky Night** (`luckyNight`) pays
+  the two diamonds a full moon pays, on any night, through `-[ADDiamondDropper die]` 0x10007e800's own
+  line; **Supply Delay** (`lessPowerUps`) adds ten seconds to the cooldown where More Power Ups! takes ten
+  off, the same line in `resetPowerUpCooldown` 0x10004b640; and **Holes In Your Pockets** (`lessCoins`)
+  takes 15% of the coins where Metal Detector adds 15%, the same line in `endLevel` 0x1000b89f0.
+
+  The four new flags are `modifiers.PORT_FLAGS`, kept apart from `FLAGS` so that list stays the
+  thirty-two the original's class has, in its order.  Everything that reads one reads the other: they are
+  cleared by `resetModifiers` at the start of every game and accepted by `has_setter`, so `applyModifier:`
+  0x100035da4 applies a card carrying one exactly as it applies theirs.
+
+  The `icon` on each card names one of the original's own, and no card icon ships at all - the whole
+  `Roulette_icon_*` set went with the roulette screen - so the port's cards are in the same position as
+  Somethin' Else's and no art is invented.
+
+* PORT DIVERGENCE: a reload takes as long as the modifiers say.  `reloadTimeModifier` 0x1000de77c is the
+  original's own - 1.2 with `fasterReloadTime`, 0.8 with `slowerReloadTime` - and the original computes it
+  and writes it to the log and nothing else: no card sets either flag, and no reload reads the number.  It
+  is applied here, as a speed, so the time is divided by it: 1.2 makes a 2 s reload take 1.67 s and 0.8
+  makes it take 2.5 s.  Which way round it was meant to go was never shipped, so this is the port's
+  reading of a number the original chose (user request, for Quick Hands and Heavy Hands).
+
 * PORT ADDITION: three tarot cards are dealt, and the third one cannot be changed (user request).
   `cardsToLoad` is 2 in `-[ADTarotViewController viewDidLoad]` 0x10003461c, but `Tarot.plist` ships a
   third level of twelve cards - six good and six bad - that the original never deals, and everything

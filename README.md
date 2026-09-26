@@ -642,7 +642,7 @@ can be checked against the binary or put back. Listed below are the ones you wou
 rest are internal — analytics that only log locally, a sanity check that only printed, an undefined return
 value nothing reads.
 
-There are **131 divergences** and **15 original quirks kept on purpose** in the notes, of which 74 are
+There are **133 divergences** and **15 original quirks kept on purpose** in the notes, of which 75 are
 listed here.
 
 ### 1. Windows standing in for a phone
@@ -830,6 +830,9 @@ replacing them.
 - **A third tarot card** before an Endless game, from a deck of twelve the original ships and never deals.
   It cannot be changed at any price, so a hand always holds one card nobody picked. The first two are as
   they were, at 3 diamonds and 2.
+- **New tarot cards**, good and bad, dealt from the original's own decks alongside its cards. Each deck
+  keeps its subject — the arena, the zombies, your guns — and gains as many good cards as bad, so the
+  third card stays an even chance. More will follow.
 - **A fifth level for four of the power-ups** — the Minigun, the Fireworks, the Tesla and the Tornado.
   It is not for sale: the Powered Power Ups tarot card is the only way to reach it, and before this that
   card gave a player who had bought every upgrade nothing at all.

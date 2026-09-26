@@ -53,6 +53,19 @@ def new_key(where: dict, key: str, value) -> None:
     where[key] = value
 
 
+def new_entry(entries: list, entry: dict) -> None:
+    """Add one entry to a list the original ships.  Raises if it already holds one by that title.
+
+    `new_key`'s counterpart: several of their plists are lists of dictionaries - the tarot decks, the
+    weapons, the power-ups - and adding to one is how the port gives the game new content.  The title is
+    what a player hears, so two entries sharing one would be two cards nobody could tell apart.
+    """
+    for existing in entries:
+        if isinstance(existing, dict) and existing.get('title') == entry.get('title'):
+            raise KeyError('%r is already in this list; an addition may not replace it' % entry.get('title'))
+    entries.append(dict(entry))
+
+
 def named(entries, name: str):
     """The entry called `name` in one of the original's lists of dictionaries, or None.
 
@@ -87,6 +100,55 @@ FIFTH_POWER_UP_LEVEL = {
     'tesla': {'kills': 5},                                # 1, 2, 3, 4
     'tornado': {'blowDistance': 7},                       # 1, 2, 3, 5
 }
+
+
+#: The port's own tarot cards, by the deck they are dealt from (user request).
+#:
+#: Each deck has a subject the original kept to, and these keep to it as well: level 1 is the arena and
+#: what you brought to it, level 2 is the zombies, and level 3 - the card that is dealt and kept - is your
+#: guns.  Each deck also gains as many good cards as bad ones, so the even split that makes the third card
+#: a coin flip stays even.
+#:
+#: Every `selector` here is a flag something reads.  Two are the original's own and were never dealt:
+#: `fasterReloadTime` and `slowerReloadTime` are set by nothing in the original, and `reloadTimeModifier`
+#: 0x1000de77c computes 1.2 and 0.8 from them and only writes the number to the log.  The other four are
+#: the port's (`modifiers.PORT_FLAGS`).  The icons are chosen from the set the original already ships, so
+#: nothing here needs art that is not in `game/`.
+NEW_CARDS = {
+    'level_1': (
+        {'title': 'Air Drop Inbound', 'goodbad': 'good', 'selector': 'earlyPowerUp',
+         'icon': 'Roulette_icon_increase',
+         'description': 'Your first Power Up is already on its way.'},
+        {'title': 'Lucky Night', 'goodbad': 'good', 'selector': 'luckyNight',
+         'icon': 'Roulette_icon_luck',
+         'description': 'Diamond Droppers are feeling generous. Two Diamonds each!'},
+        {'title': 'Supply Delay', 'goodbad': 'bad', 'selector': 'lessPowerUps',
+         'icon': 'Roulette_icon_cogs',
+         'description': 'Dr. Bastard held up the delivery. Power Ups take 10 seconds longer to arrive.'},
+        {'title': 'Holes In Your Pockets', 'goodbad': 'bad', 'selector': 'lessCoins',
+         'icon': 'Roulette_icon_sonar',
+         'description': 'Something is torn. You earn 15% fewer Coins this game.'},
+    ),
+    'level_3': (
+        {'title': 'Quick Hands', 'goodbad': 'good', 'selector': 'fasterReloadTime',
+         'icon': 'Roulette_icon_tripleshot',
+         'description': 'Your hands fly! Reloading takes far less time.'},
+        {'title': 'Heavy Hands', 'goodbad': 'bad', 'selector': 'slowerReloadTime',
+         'icon': 'Roulette_icon_cogs',
+         'description': 'Your hands are like lead. Reloading takes far longer.'},
+    ),
+}
+
+
+@adds_to('Tarot')
+def new_tarot_cards(tarot: dict) -> None:
+    """Deal the port's own cards from the original's decks."""
+    for level, cards in NEW_CARDS.items():
+        deck = tarot.get(level)
+        if not isinstance(deck, list):
+            continue
+        for card in cards:
+            new_entry(deck, card)
 
 
 @adds_to('Weapons')

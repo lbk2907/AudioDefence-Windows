@@ -131,6 +131,8 @@ class InGameStats:
                                                       * self.current_accuracy())
         if GameModifiers.shared().metalDetector:
             self.total_coins = int(float(self.total_coins) * 1.15) & 0xFFFFFFFF
+        if GameModifiers.shared().lessCoins:              # PORT ADDITION: Holes in Your Pockets
+            self.total_coins = int(float(self.total_coins) * 0.85) & 0xFFFFFFFF
         InGameStats.toggle_on_off(False)
 
     def save_stats(self) -> None:                           # 0x1000b8c0c

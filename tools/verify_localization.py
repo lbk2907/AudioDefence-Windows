@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import copy
 import io
 import os
 import plistlib
@@ -27,7 +28,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
 from audiodefence import localization, paths                       # noqa: E402
-from audiodefence.game import data                                # noqa: E402  (corrected(), for _as_read)
+from audiodefence.game import additions, data                    # noqa: E402  (corrected(), and the port's own content)
 
 #: the file a translator works in until they rename it (tools/make_language.py)
 TEMPLATE = 'template'
@@ -171,11 +172,16 @@ def data_phrases():
     Each one is offered both as it is written in their file and as `data.corrected` hands it to the
     screens, when those differ.  The corrected form is what the player is actually told, so it is the form
     a translator needs; the written one stays in the list because the language files already carry it and
-    a phrase is never taken away from them."""
+    a phrase is never taken away from them.
+
+    The port's own content is walked as well (`game/additions.py`), because a card or a level the port
+    adds is text a player reads and is in no file here.  A phrase is offered once however many ways it
+    is reached."""
     bundle = paths.BUNDLE
     if not os.path.isdir(bundle):
         print('the game folder is not there (%s): the data phrases are not checked' % bundle)
         return
+    seen = set()
     for folder, dirs, files in os.walk(bundle):
         dirs[:] = [d for d in dirs if d not in ('sounds', '__pycache__')]
         for name in files:
@@ -187,10 +193,19 @@ def data_phrases():
                         loaded = plistlib.load(fh)
                 except Exception:                               # noqa: BLE001 - not ours to report here
                     continue
-                for field, text in _walk_plist(loaded):
-                    if field.lower() in FIELDS and len(text) > 2 and not is_plumbing(text):
-                        for phrase in _as_read(text):
-                            yield phrase, '%s [%s]' % (rel, field)
+                # what the game reads: their file, plus whatever the port adds to it
+                trees = [(loaded, rel)]
+                added = additions.apply_to(os.path.splitext(name)[0], copy.deepcopy(loaded))
+                if added is not None:
+                    trees.append((added, '%s [port addition]' % rel))
+                for tree, where in trees:
+                    for field, text in _walk_plist(tree):
+                        if field.lower() in FIELDS and len(text) > 2 and not is_plumbing(text):
+                            for phrase in _as_read(text):
+                                if phrase in seen:
+                                    continue
+                                seen.add(phrase)
+                                yield phrase, '%s [%s]' % (where, field)
             elif name.endswith('.strings'):
                 for text in _strings_file(path):
                     if not is_plumbing(text):

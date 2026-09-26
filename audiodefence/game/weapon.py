@@ -233,7 +233,13 @@ class Weapon:
                 self.set_state(7)
                 self.bullets_in_clip = 0
         elif st == 8:
-            if self.time_in_state > self.reload_time:
+            # PORT DIVERGENCE: the reload takes as long as the modifiers say (Quick Hands, Heavy Hands).
+            # `reloadTimeModifier` 0x1000de77c is the original's own - 1.2 with fasterReloadTime, 0.8 with
+            # slowerReloadTime - and the original only ever writes the number to its log; no card sets
+            # either flag and no reload reads it.  It is a speed, so the time is divided by it: 1.2 makes
+            # a 2 s reload take 1.67 s, 0.8 makes it take 2.5 s.  Which way round was never shipped, so
+            # this is the port's reading of a number the original chose.
+            if self.time_in_state > self.reload_time / GameModifiers.shared().reload_time_modifier():
                 self.set_state(0)
                 self.reload_sound = None                  # PORT ADDITION: it has played itself out
                 if self.bullets_total >= self.capacity:

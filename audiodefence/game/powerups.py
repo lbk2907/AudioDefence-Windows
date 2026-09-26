@@ -89,6 +89,8 @@ class PowerUpManager:
         self.powerup_cool_down = float(ns_int_value(_get(_get(d, f'level_{level}'), 'cooldownTime')))
         if GameModifiers.shared().morePowerUps:
             self.powerup_cool_down = self.powerup_cool_down + -10.0
+        if GameModifiers.shared().lessPowerUps:           # PORT ADDITION: Supply Delay, the mirror of it
+            self.powerup_cool_down = self.powerup_cool_down + 10.0
 
     def try_to_pop_power_up(self) -> None:                # 0x10004b868
         if self.powerup_cool_down > 0.0:
