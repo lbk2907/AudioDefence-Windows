@@ -479,8 +479,18 @@ class AccessibleScreen(Screen):
         # -[ADViewController accessibilityPerformEscape] 0x1000728e4
         if not self.has_escape:
             return False
+        went = self.goes_back()
         self.back_button_pressed()
-        return True
+        return went
+
+    def goes_back(self) -> bool:
+        """Whether this screen has anywhere to go back to.
+
+        `-[ADNoBarViewController backButtonPressed]` 0x1000195e8 only writes a line to the log, so a screen
+        that never replaced it - the main menu among them - answers Escape by doing nothing at all.  It is
+        still sent, as the original sends it; it simply does not count as having gone anywhere, so nothing
+        is heard (user request)."""
+        return type(self).back_button_pressed is not AccessibleScreen.back_button_pressed
 
     # REMOVED (user request): the magic tap.  VoiceOver's two-finger double tap is a gesture with no
     # keyboard equivalent on iOS, and the port had bound it to F2 - a second way to press a button that

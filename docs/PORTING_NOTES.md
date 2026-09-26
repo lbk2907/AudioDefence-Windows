@@ -231,6 +231,12 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   cards are dealt) answers False and stays silent.  `MenuScreen` clicks behind its own guard, which is the
   same question asked of a screen that has no nib.  Silence means nothing happened.
 
+  `has_escape` alone was not that question: `-[ADNoBarViewController backButtonPressed]` 0x1000195e8 only
+  writes a line to the log, and a screen that never replaced it answers Escape by doing nothing.  The main
+  menu is one, and it clicked on a key that did nothing at all.  `AccessibleScreen.goes_back` asks whether
+  the screen has a back of its own; the escape is still sent either way, as the original sends it.  Of the
+  game's screens the main menu is the only one this quietens.
+
 * A Berserk charging the player keeps its growl when it is hit (user request).  A hit stops the enemy's
   own loop so the pain sound can be heard and asks for it back when that sound ends
   (`-[ADEnemy playHitSoundForDamages:]` 0x100062db8), through `walkOrAgressive` 0x10005fe54 - which answers
