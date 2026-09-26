@@ -1127,9 +1127,31 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   which is their folder - audible content would need a folder of the port's own and an engine that looks in
   both.  This is for data.
 
+* PORT DIVERGENCE: Powered Power Ups says what it does (user request).  Its description reads "All Power
+  Ups are fully levelled up for this game", and the card has never done that: `-[ADMinigunPowerUp preload]`
+  0x1000b242c and the three like it read the inventory's level and add 1 when `level_<level+1>` exists, so
+  a Minigun bought to level 1 is played at level 2, not at 4.  The sentence was wrong in the original for
+  everyone below the top, and the port's fifth level (below) makes it wrong at the top as well, where the
+  card now reaches a level no purchase can.  It reads "All Power Ups go up a level for this game, even
+  beyond the top level you can buy."
+
+  `data.REWORDED` is where that sentence lives, beside `TYPOS` and applied by the same `corrected()` as
+  their data is read in, so every screen that shows the card gets it and `game/Tarot.plist` is untouched -
+  a copy of the app given with `--game` is restated too.  It is a table of its own and not an entry in
+  `TYPOS` because nothing in `TYPOS` is the port's doing: those are the original's own spelling mistakes,
+  and this is a sentence the port made untrue.  It is the other half of the rule in `additions.py`: an
+  addition may never replace what the original wrote, so a value the port does change is restated by name
+  in one place, where it can be read beside the original's and found from here.
+
+  `tools/verify_localization.py` now offers a translator both forms of any phrase a correction touches -
+  as their file writes it, and as the game reads it in - because the corrected form is what the player is
+  actually told and was invisible to the walk before.  All fifteen phrases `TYPOS` touches already had
+  their corrected form in Russian; this one does not yet.
+
 * PORT ADDITION: a fifth power-up level, which the Powered Power Ups tarot card is the only way to reach
-  (user request, and the first content the port adds rather than restores).  The card says "All Power Ups
-  are fully levelled up for this game" and `_levelDictionary` gives one level, and only when the data has
+  (user request, and the first content the port adds rather than restores).  The card said "All Power Ups
+  are fully levelled up for this game" - restated since, see above - and `_levelDictionary` gives one
+  level, and only when the data has
   a next one (`level_<level+1>`): a player who has bought every upgrade therefore gets nothing at all from
   it, while being told it is one of the best cards in the deck.  They keep it and play a run with one of
   their tarot slots empty.  `additions.FIFTH_POWER_UP_LEVEL` is what that player gets instead - the

@@ -85,12 +85,32 @@ TYPOS = (
 )
 
 
+#: PORT DIVERGENCE: the original's own writing, where a change of the port's has left it saying
+#: something untrue (user request).  This is not TYPOS: nothing above is wrong in the original, and
+#: nothing here would be either if the port had left the game alone.  It is the other half of the rule
+#: in `additions.py` - an addition may never replace what the original wrote, so when the port changes
+#: what a thing does, the sentence describing it is restated here, named in full, where it can be read
+#: beside the original's and written down in `docs/PORTING_NOTES.md`.
+#:
+#: Their files are not touched either, so a copy of the app given with --game is restated too.
+REWORDED = (
+    # Powered Power Ups.  The card never fully levelled anything up: -[ADMinigunPowerUp preload]
+    # 0x1000b242c and the three like it add 1 to the inventory's level when `level_<level+1>` exists,
+    # so a Minigun at level 1 played at level 2.  The port gave four power-ups a fifth level
+    # (additions.FIFTH_POWER_UP_LEVEL) so the card is worth something at the top as well, which makes
+    # "fully levelled up" wrong twice over.  This says the one level it has always given.
+    ('All Power Ups are fully levelled up for this game.',
+     'All Power Ups go up a level for this game, even beyond the top level you can buy.'),
+)
+
+
 def corrected(text):
-    """A piece of the game's own writing with its spelling mistakes put right (TYPOS)."""
+    """A piece of the game's own writing, put right: its spelling (TYPOS), and what the port has made
+    untrue (REWORDED)."""
     if not text:
         return text
     out = str(text)
-    for wrong, right in TYPOS:
+    for wrong, right in TYPOS + REWORDED:
         out = out.replace(wrong, right)
     return out
 

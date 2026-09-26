@@ -101,6 +101,11 @@ English without anything saying so.  Hand that phrase to `localization.translate
 line around the result, which the tool does collect.  The third tarot card's note was found this way on
 2026-09-26, after the verifier passed while the phrase it had just gained was nowhere in it.
 
+The same goes for the game's own writing when the port corrects it (`data.TYPOS`, `data.REWORDED`): what
+the player is told is the corrected sentence, so that is the sentence a language file needs.  The verifier
+offers a translator both forms and takes neither away, since the files already carry what their data
+says.
+
 **A rule needs all of them, not a handful.**  Whenever a change turns on a threshold, a flag or a test that
 will be applied across a whole set - every sound, every screen, every enemy - measure the whole set before
 settling it, and say in the commit how many were looked at.  Twice on 2026-09-25 a rule drawn from the few

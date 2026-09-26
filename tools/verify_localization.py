@@ -27,6 +27,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
 from audiodefence import localization, paths                       # noqa: E402
+from audiodefence.game import data                                # noqa: E402  (corrected(), for _as_read)
 
 #: the file a translator works in until they rename it (tools/make_language.py)
 TEMPLATE = 'template'
@@ -157,8 +158,20 @@ def code_phrases():
                     yield text, '%s:%d' % (os.path.relpath(path, ROOT), item.lineno)
 
 
+def _as_read(text: str):
+    """The phrase as their file writes it, and as the game reads it in, when those differ."""
+    written = ' '.join(text.split())
+    read = ' '.join(data.corrected(text).split())
+    return (written,) if read == written else (written, read)
+
+
 def data_phrases():
-    """The phrases of the original game's data, when the bundle is where the game looks for it."""
+    """The phrases of the original game's data, as the game reads them in.
+
+    Each one is offered both as it is written in their file and as `data.corrected` hands it to the
+    screens, when those differ.  The corrected form is what the player is actually told, so it is the form
+    a translator needs; the written one stays in the list because the language files already carry it and
+    a phrase is never taken away from them."""
     bundle = paths.BUNDLE
     if not os.path.isdir(bundle):
         print('the game folder is not there (%s): the data phrases are not checked' % bundle)
@@ -176,11 +189,13 @@ def data_phrases():
                     continue
                 for field, text in _walk_plist(loaded):
                     if field.lower() in FIELDS and len(text) > 2 and not is_plumbing(text):
-                        yield ' '.join(text.split()), '%s [%s]' % (rel, field)
+                        for phrase in _as_read(text):
+                            yield phrase, '%s [%s]' % (rel, field)
             elif name.endswith('.strings'):
                 for text in _strings_file(path):
                     if not is_plumbing(text):
-                        yield text, rel
+                        for phrase in _as_read(text):
+                            yield phrase, rel
 
 
 def _walk_plist(value, field: str = ''):
