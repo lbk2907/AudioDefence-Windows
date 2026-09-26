@@ -858,7 +858,10 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   (`ControlSchemePanel.open_choices`, user request): the panel shows the choices instead of the category's
   rows, the one in use is where the cursor lands and is read as selected, Enter takes the one under the
   cursor and Escape or Back leaves the setting as it was - both close the list rather than the screen, the
-  way the armory's Escape closes an open weapon page.  They used to step one press at a time, which says
+  way the armory's Escape closes an open weapon page.  The screen's own OK button is hidden while a list is
+  open (`ControlSchemePanel._show_ok`, user request): OK finishes the settings screen, and inside a list
+  there is nothing for it to finish - Enter takes a choice and Back leaves - so pressing it threw the
+  player out of the settings altogether.  They used to step one press at a time, which says
   every choice on the way past: twelve here, and as many voices as the machine has on the voice row below -
   two hundred and fifty on the machine this was written for.  The row says what was taken, through the new
   choice or, when that one cannot speak (`Speech.can_speak`),

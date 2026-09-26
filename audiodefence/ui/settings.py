@@ -307,6 +307,7 @@ class ControlSchemePanel:
         Enter takes one and Escape leaves it as it was (user request).
         """
         self.choosing = (title, list(options), current, apply)
+        self._show_ok(False)                              # see _show_ok
         self.table_view.children.clear()                  # a list of its own: no row keeps its place
         self.reload_data()
         rows = [row for row in self.table_view.children if row.traits == CELL]
@@ -322,9 +323,19 @@ class ControlSchemePanel:
                          action=lambda v=value: self.take_choice(v))
             row.selected = value == current               # where the cursor lands, and read as selected
 
+    def _show_ok(self, visible: bool) -> None:
+        """PORT ADDITION: the screen's OK button is hidden while a row's choices are listed (user
+        request).  OK finishes the settings screen, and a list is a page on top of it: Enter takes a
+        choice and Back leaves the list, so OK there would either do nothing a player wants or throw them
+        out of the settings altogether, which is what it did."""
+        button = getattr(self.screen, 'ok_button', None)
+        if button is not None:
+            button.hidden = not visible
+
     def take_choice(self, value) -> None:
         title, _options, _current, apply = self.choosing
         self.choosing = None
+        self._show_ok(True)
         self.table_view.children.clear()
         apply(value)                                      # which says what was chosen, in the new voice
         self.reload_data()
@@ -337,6 +348,7 @@ class ControlSchemePanel:
             return False
         title = self.choosing[0]
         self.choosing = None
+        self._show_ok(True)
         self.table_view.children.clear()
         self.reload_data()
         self._focus_row(title)
@@ -859,7 +871,8 @@ class SettingsScreen(ViewControllerScreen):
     def load_view(self) -> None:                          # 0x1000af3dc
         v = self.view = View('', (0, 0, 568, 320), accessible=False, name='#54')
         self.control_scheme_view = View('', (30, 50, 508, 190), accessible=False, parent=v, name='#19')
-        Button('OK', (254, 245, 60, 50), parent=v, actions=[self.validate_button_pressed], name='#65')
+        self.ok_button = Button('OK', (254, 245, 60, 50), parent=v, actions=[self.validate_button_pressed],
+                                name='#65')
         self.roots = [v]
 
     def view_did_load(self) -> None:                      # 0x1000af1b8
