@@ -73,3 +73,12 @@ running it again costs the time it takes and says nothing.  So:
 * Run it again only when what it covers has changed underneath it - a refactor across the same path, a fix
   on top of the fix.  Say which change made it worth running again.
 * A smoke run of the real game is worth one pass at the end of a piece of work, not one per edit.
+
+**A rule needs all of them, not a handful.**  Whenever a change turns on a threshold, a flag or a test that
+will be applied across a whole set - every sound, every screen, every enemy - measure the whole set before
+settling it, and say in the commit how many were looked at.  Twice on 2026-09-25 a rule drawn from the few
+files in front of me was wrong across the rest: a 20 ms cap on trimming a loop's tail, picked from ten
+recordings, had no gap to sit in once all 915 were measured; and `has_escape`, which means the original
+implements an escape, was used as though it meant the screen has somewhere to go, which is false for the
+main menu.  The first had to be reverted, the second was found by a player.  Checking the set costs one
+command and settles it.
