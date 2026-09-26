@@ -7,6 +7,10 @@ import plistlib
 from functools import lru_cache
 
 from .. import paths
+from .. import localization
+from .. import localization
+from .. import localization
+from .. import localization
 
 
 @lru_cache(maxsize=None)
@@ -109,5 +113,5 @@ def localized(key: str, value: str = '') -> str:
     and value is empty."""
     s = _strings().get(key)
     if s is not None:
-        return corrected(s)                               # PORT ADDITION: the original's typos (TYPOS)
-    return value if value else key
+        return localization.translate(corrected(s))                               # PORT ADDITION: the original's typos (TYPOS)
+    return localization.translate(value if value else key)

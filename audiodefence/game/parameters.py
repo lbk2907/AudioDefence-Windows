@@ -281,6 +281,19 @@ class GameParameters:
         self.defaults.set_bool(bool(value), 'fineHaptics')
         self.defaults.synchronize()
 
+    #: PORT ADDITION: Settings -> Miscellaneous -> Language: the language the port's own text is shown and
+    #: spoken in (audiodefence/localization.py, localization/<code>.json).  English by default, so a player
+    #: who does not choose one sees exactly what the port always showed.
+    LANGUAGES = (('en', 'English'), ('ru', 'Русский'))
+    DEFAULT_LANGUAGE = 'en'
+
+    def language(self) -> str:
+        value = self.defaults.object('language')
+        return value if value in dict(self.LANGUAGES) else self.DEFAULT_LANGUAGE
+
+    def set_language(self, value: str) -> None:
+        self.defaults.set_object(value, 'language')
+
     #: PORT ADDITION: Settings -> Speech -> Use modern output: whether the game plays what SAPI 5 says
     #: through its own sound (platform/speech_audio.py), where a line stops the instant it is interrupted,
     #: or hands it to Windows as it always did, where what is already buffered plays on.  On by default, and
