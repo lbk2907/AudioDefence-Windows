@@ -42,13 +42,14 @@ def compute_current_enemy_kill_count(stats) -> int:     # -[ADInGameStats comput
 
 
 def tarot_row(cards):
-    """PORT ADDITION: the run's cards as one line - ('Tarot cards', 'More Power Ups! and Glue Barrels') -
-    or ('Tarot card', title) for one, or None when the run had none."""
+    """PORT ADDITION: the run's cards as one line - ('Tarot cards', 'More Power Ups!, Glue Barrels and
+    Black Cat') - or ('Tarot card', title) for one, or None when the run had none."""
     titles = [title for _level, title in cards]
     if not titles:
         return None
     label = 'Tarot card' if len(titles) == 1 else 'Tarot cards'
-    return localization.translate(label), ' and '.join(titles)   # PORT ADDITION: chosen language
+    listed = ' and '.join([', '.join(titles[:-1]), titles[-1]] if len(titles) > 2 else titles)
+    return localization.translate(label), listed        # PORT ADDITION: chosen language
 
 
 @register('Accessible_ADGameOverEndlessViewController')

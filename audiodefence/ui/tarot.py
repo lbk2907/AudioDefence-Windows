@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 
+from .. import localization
 from ..app import App
 from ..game import data
 from ..platform import crand
@@ -11,11 +12,23 @@ from ..platform.runloop import RunLoop
 from ..platform.speech import Speech
 from ..platform.tracker import Tracker
 from ..s3d.engine import S3DEngine
-from .accessibility import BUTTON, Button, View
+from .accessibility import BUTTON, STATIC_TEXT, Button, View
 from .host import register
 from .viewcontroller import ViewControllerScreen
 
 log = logging.getLogger('ui.tarot')
+
+#: PORT DIVERGENCE (user request): three cards are dealt, not two - `cardsToLoad` is set to 2 in
+#: -viewDidLoad 0x10003461c.  Tarot.plist ships a third level of twelve cards, six good and six bad, that
+#: the original never deals; everything else about it was finished - the layout maths divides the container
+#: by `cardsToLoad` and 140-wide cards leave a 10-point gap either side at three, -viewDidLoad prices a
+#: level-3 change at 1 diamond, and -resetCardsModifiersIfNeeded 0x1000d42a8 already clears three keys.
+CARDS_TO_LOAD = 3
+
+#: PORT DIVERGENCE (user request): the third card is dealt and kept.  The first two can still be bought
+#: out of, at 3 diamonds and 2; the level-3 deck is an even split of six good cards and six bad, so the
+#: hand always holds one card the player did not choose and cannot pay to be rid of.
+LOCKED_CARD_LEVEL = 3
 
 
 def _cards_for_level(level: int) -> list:
@@ -24,15 +37,15 @@ def _cards_for_level(level: int) -> list:
 
 
 def cards_in_play() -> list:
-    """PORT ADDITION: [(1, title), (2, title)] - the two cards this Endless run was dealt, for the game-over
-    screen's first row and so for Copy results.
+    """PORT ADDITION: [(1, title), ...] - the cards this Endless run was dealt, for the game-over screen's
+    first row and so for Copy results.
 
-    They are kept as tarotCard1 and tarotCard2, each by its selector, and a selector is looked up in its
+    They are kept as tarotCard1, tarotCard2 and tarotCard3, each by its selector, and a selector is looked up in its
     own level of Tarot.plist: the same selector names a different card on another level.  The game-over
     screen clears them as it opens after a long enough run, so it has to ask before that."""
     out = []
     defaults = UserDefaults.standard()
-    for level in (1, 2):                                  # cardsToLoad is 2: one card from each level
+    for level in range(1, CARDS_TO_LOAD + 1):             # one card from each level of the deck
         selector = defaults.object('tarotCard%i' % level)
         if selector is None:
             continue
@@ -69,6 +82,7 @@ class TarotCardViewController:
         if self.card_dictionary is None and cards:
             self.card_dictionary = cards[crand.rand() % len(cards)]
         self.tarot_view_controller = None
+        self.locked = card_level == LOCKED_CARD_LEVEL     # PORT DIVERGENCE: see LOCKED_CARD_LEVEL
         self.cost = 0
         self.current_title = None
         self.flipped = False
@@ -89,11 +103,15 @@ class TarotCardViewController:
         self.card_front = View('', (0, 0, 130, 190), accessible=False, name='cardFront #62')
         self.card_title = View('Label', (15, 39, 100, 25), parent=self.card_front, name='#79')
         self.card_description = View('Label', (15, 64, 100, 77), parent=self.card_front, name='#22')
-        self.change_card_button = Button('Button', (15, 141, 100, 25), parent=self.card_front,
-                                         actions=[self.change_card_button_pressed], name='#42')
+        self.change_card_button = None                    # PORT DIVERGENCE: a locked card has no button
+        if not self.locked:
+            self.change_card_button = Button('Button', (15, 141, 100, 25), parent=self.card_front,
+                                             actions=[self.change_card_button_pressed], name='#42')
         self.card_back = View('', (0, 0, 130, 190), accessible=False, name='cardBack #75')
-        for v in (self.card_front, self.card_title, self.card_description, self.change_card_button, self.card_back):
-            self._relative[id(v)] = v.frame
+        for v in (self.card_front, self.card_title, self.card_description, self.change_card_button,
+                  self.card_back):
+            if v is not None:
+                self._relative[id(v)] = v.frame
 
     def set_center(self, cx: float, cy: float) -> None:   # [[card view] setCenter:] in the container's coordinates
         w, h = self._view.frame[2], self._view.frame[3]
@@ -129,13 +147,17 @@ class TarotCardViewController:
         if self.card_level == 3:
             self.cost = 1
         # changeCardButton setDiamonds:cost -> -setTitle:forState: labels it "<title> diamonds"
-        title = 'Change for %d' % self.cost
-        self.change_card_button.set_title(title)
-        self.change_card_button.label = '%s diamonds' % title
+        if self.change_card_button is not None:
+            title = 'Change for %d' % self.cost
+            self.change_card_button.set_title(title)
+            self.change_card_button.label = '%s diamonds' % title
         if self.host.screen_reader_running():
             self._view.children.clear()                   # [[view subviews] makeObjectsPerformSelector:removeFromSuperview]
             # [[ADButtonWithFont alloc] initWithFrame:view.frame]: no -awakeFromNib, so no click sound
-            self.accessible_card = View('', self._view.frame, traits=BUTTON, parent=self._view, name='accessibleCard')
+            # PORT DIVERGENCE: a locked card is read as text, because it is not a button: there is nothing
+            # to press on it, and "button" at the end of it would be an offer the card does not make.
+            self.accessible_card = View('', self._view.frame, traits=STATIC_TEXT if self.locked else BUTTON,
+                                        parent=self._view, name='accessibleCard')
             self.accessible_card.label_key_words = True   # PORT ADDITION: "press Enter to change", or a button
             self._relative[id(self.accessible_card)] = self._view.frame
             self.refresh_card()
@@ -147,7 +169,8 @@ class TarotCardViewController:
         if self.host.screen_reader_running():
             card = self.accessible_card
             self.refresh_accessible_text()
-            card.add_target(self.change_card_button_pressed)
+            if not self.locked:
+                card.add_target(self.change_card_button_pressed)
             # makeAccessible / setupAsAccessibleTarotCardInfo: colours and fonts
         else:
             self.card_title.label = self.card_dictionary.get('title')
@@ -184,15 +207,26 @@ class TarotCardViewController:
         card = self.accessible_card
         card.set_title(self.accessible_description())
         card.label = self.accessible_description()
-        card.hint = 'You have %i diamonds' % Inventory.shared().diamonds
+        # PORT DIVERGENCE: the count is what you would be spending, so a card you cannot spend on is silent
+        # about it.  The status bar still carries the number for anyone who wants it.
+        card.hint = None if self.locked else 'You have %i diamonds' % Inventory.shared().diamonds
 
     def accessible_description(self) -> str:             # 0x1000a61a0
+        if self.locked:                                   # PORT DIVERGENCE: see LOCKED_CARD_LEVEL
+            # The note is handed to the layer as a phrase of its own rather than written into the template
+            # around it: a line with a substitution in it is not offered to a translator (PLUMBING, in
+            # tools/verify_localization.py), so a phrase buried inside one would stay English unnoticed.
+            return 'Tarot card number %i : %s \n\n %s \n\n(%s)' % (
+                self.card_level, self.card_dictionary.get('title'), self.card_dictionary.get('description'),
+                localization.translate('this card cannot be changed'))
         # PORT INPUT: the original says "(double tap to change for %i diamonds)"; the port names its key
         return 'Tarot card number %i : %s \n\n %s \n\n(press Enter to change for %i diamonds)' % (
             self.card_level, self.card_dictionary.get('title'), self.card_dictionary.get('description'), self.cost)
 
     def change_card_button_pressed(self) -> None:         # changeCardButtonPressed: 0x1000a62b8
         from ..game.inventory import Inventory
+        if self.locked:                                   # PORT DIVERGENCE: nothing reaches this on card 3
+            return
         if not Inventory.shared().diamonds >= self.cost:
             self.host.show_no_diamonds_alert()
             return
@@ -322,14 +356,16 @@ class TarotScreen(ViewControllerScreen):
             self.play_button.user_interaction_enabled = False
         sb.deactivate_buttons()
         self.dealing = True
-        self.cards_to_load = 2
+        self.cards_to_load = CARDS_TO_LOAD                # PORT DIVERGENCE: 2 in the original
         n = 0
         while True:
             self.load_card_with_number(n + 1)
             n += 1
             if not n < self.cards_to_load:
                 break
-        RunLoop.main().call_later(2.3, self._cards_dealt)
+        # card N flips after N seconds, so the deal ends 0.3 s after the last of them - the original's own
+        # 2.3 for its two cards, kept as the sum it is rather than as the number it came to.
+        RunLoop.main().call_later(float(self.cards_to_load) + 0.3, self._cards_dealt)
 
     def _cards_dealt(self) -> None:                       # viewDidLoad_block_invoke 0x100034e84
         self.dealing = False

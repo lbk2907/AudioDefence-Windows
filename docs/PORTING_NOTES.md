@@ -258,10 +258,10 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
 * `-[ADBrickManager runSanityCheck]` (log-only) is not ported; its `loadBrickChancePlist:` side effects are.
 * `-[ADTarotCardViewController flipCard:]` 0x1000a5e50 returns at once while VoiceOver runs, and the flip
   sound is played at the end of the animation it skips, so a VoiceOver player hears nothing at all while the
-  two cards are dealt.  The port keeps the animation skipped and plays the sound, one card at a time (about
-  1 s and 2 s in), so the deal is audible.
+  cards are dealt.  The port keeps the animation skipped and plays the sound, one card at a time (a second
+  apart, the last of them three seconds in), so the deal is audible.
 * `-[ADStatusBarViewController deactivateButtons]` 0x10001cee4 fades the Back and Armory buttons to alpha 0
-  while a screen animates in - on the tarot screen, the 2.3 s of the deal - which takes them out of the
+  while a screen animates in - on the tarot screen, the seconds of the deal - which takes them out of the
   reading order for those seconds: long enough to arrow past where the Armory button is about to appear and
   think it is missing.  The port keeps the lock-out but dims them instead of hiding them, so the screen has
   the same shape throughout and the buttons say why they cannot be pressed yet.
@@ -1132,7 +1132,7 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   are fully levelled up for this game" and `_levelDictionary` gives one level, and only when the data has
   a next one (`level_<level+1>`): a player who has bought every upgrade therefore gets nothing at all from
   it, while being told it is one of the best cards in the deck.  They keep it and play a run with one of
-  their two tarot slots empty.  `additions.FIFTH_POWER_UP_LEVEL` is what that player gets instead - the
+  their tarot slots empty.  `additions.FIFTH_POWER_UP_LEVEL` is what that player gets instead - the
   Minigun 15 seconds, the Fireworks 9 damage, the Tesla 5 kills, the Tornado 7 of reach - each carrying its
   own progression one step.
 
@@ -1185,11 +1185,32 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   modifier under the same key.  Nothing else moves: `applyAllModifiers` 0x100035a5c still reads the live
   card, and `resetCardsModifiersIfNeeded` 0x1000d42a8 still clears all three keys after an endless game
   lasting over 60 seconds, so a fresh deal still follows a real run.
-* After a tarot card is paid for, both cards' "You have N diamonds" hints are rebuilt.
+* PORT ADDITION: three tarot cards are dealt, and the third one cannot be changed (user request).
+  `cardsToLoad` is 2 in `-[ADTarotViewController viewDidLoad]` 0x10003461c, but `Tarot.plist` ships a
+  third level of twelve cards - six good and six bad - that the original never deals, and everything
+  around it was finished: the layout divides the container by `cardsToLoad`, so 140-wide cards leave a
+  10-point gap either side at three; `-[ADTarotCardViewController viewDidLoad]` 0x1000a4bd4 already prices
+  a level-3 change at 1 diamond; `applyModifier:` 0x100035da4 has a setter for all twelve selectors; and
+  `resetCardsModifiersIfNeeded` 0x1000d42a8 already clears three keys.  All that was missing was the 3.
+
+  The third card is dealt and kept.  It has no change button, nothing on it answers Enter, it is read as
+  text rather than as a button - "button" at the end of it would be an offer it does not make - and it
+  says "(this card cannot be changed)" where the other two say what pressing Enter costs.  It gives no
+  count of diamonds in its hint either, because the count is what you would be spending.  The first two
+  cards are untouched: 3 diamonds and 2, changed as often as you can pay for.  The point is that a hand
+  always holds one card nobody chose, out of a deck that is an even split of good and bad.
+
+  The deal runs 0.3 s past the last card rather than the original's 2.3 s, because card N flips N seconds
+  in, so the third flips at 3 s: the number was a sum, and it is written as one now.  Two decks share a
+  selector - `moreHeadshots` is Bobblehead Zombies on level 2 and Head-Seeking Bullets on level 3 - so
+  about one hand in a hundred draws both and the second is a flag already set.  That is their deck, and
+  it is left as it is.
+
+* After a tarot card is paid for, every card's "You have N diamonds" hint is rebuilt.
   `changeCardButtonPressed:` 0x1000a62b8 calls `changeCard` (0x1000a63fc, ending in `refreshCard`) before
-  `setDiamonds:` at 0x1000a6518, so the hint was built from the old balance; the card that was not changed
-  was never refreshed at all and kept the number it was dealt with.  The amount taken is unchanged
-  (3, 2, 1 diamonds by card level, `viewDidLoad` 0x1000a4bd4).
+  `setDiamonds:` at 0x1000a6518, so the hint was built from the old balance; the cards that were not
+  changed were never refreshed at all and kept the number they were dealt with.  The amount taken is
+  unchanged (3 diamonds and 2 by card level, `viewDidLoad` 0x1000a4bd4; the third card is not for sale).
 * The loadout tab names the currency a locked weapon is actually sold in.  `weaponStatus:` 0x100049c1c
   always formats the `price` key as "Locked, costs : %i coins", so the Sonic Cannon - which only has
   `priceInDiamonds` - was announced as "costs : 0 coins" while its own detail view said "Buy for 100

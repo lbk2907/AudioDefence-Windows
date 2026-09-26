@@ -544,7 +544,7 @@ clipboard." After an Endless game it looks like this:
 
     Audio Defence Endless Statistics
 
-    Tarot cards: Electric Shield and Zombies With Helmets!
+    Tarot cards: Electric Shield, Zombies With Helmets! and Lucky Shot
     Coins Earned: 7802
     Diamonds Earned: 14
     Score: 11882144
@@ -642,7 +642,7 @@ can be checked against the binary or put back. Listed below are the ones you wou
 rest are internal — analytics that only log locally, a sanity check that only printed, an undefined return
 value nothing reads.
 
-There are **129 divergences** and **15 original quirks kept on purpose** in the notes, of which 73 are
+There are **130 divergences** and **15 original quirks kept on purpose** in the notes, of which 74 are
 listed here.
 
 ### 1. Windows standing in for a phone
@@ -827,6 +827,12 @@ replacing them.
   the strength you choose. Each kind of controller keeps its own buttons, and the hints and the tutorial
   can name its buttons instead of the keys. See
   [With a game controller](#with-a-game-controller).
+- **A third tarot card** before an Endless game, from a deck of twelve the original ships and never deals.
+  It cannot be changed at any price, so a hand always holds one card nobody picked. The first two are as
+  they were, at 3 diamonds and 2.
+- **A fifth level for four of the power-ups** — the Minigun, the Fireworks, the Tesla and the Tornado.
+  It is not for sale: the Powered Power Ups tarot card is the only way to reach it, and before this that
+  card gave a player who had bought every upgrade nothing at all.
 
 ### Original quirks kept on purpose
 
