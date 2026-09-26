@@ -71,12 +71,6 @@ Language** chooses it, and the choice is kept with your other settings. English
 is the default, and a player who never opens that row sees and hears exactly
 what the port always showed.
 
-This release includes **Russian** (1,013 phrases), contributed by
-[shokrar](https://github.com/shokrar). What is translated is everything on
-screen and everything the screen reader speaks: the menus, settings, the
-armory, statistics, the Zombiepedia, the challenge screens, tarot and roulette,
-the tutorial lines and the credits.
-
 **What stays English** is the recorded audio — the announcer calling out your
 kills, and the game's own spoken lines. Those are sound files, not text, so no
 translation can reach them.
