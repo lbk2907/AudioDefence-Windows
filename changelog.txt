@@ -1,4 +1,5 @@
 unrelease:
+While a row in Settings has its list of choices open, the OK button no longer closes Settings. Enter takes a choice and Back leaves the list.
 
 26.09.26-1:
 The game runs on the Mac too, in its own build on the same release. It speaks through VoiceOver, or through the system voice when VoiceOver is off.
