@@ -113,8 +113,39 @@ class PowerUp:
         self.playlist = None
         self.name = None
         self.type = kind
+        self.paused_sounds: list = []                     # what `pause` held, to be let go again
+        self.held = False
         if kind in self.NAMES:
             self.name = self.NAMES[kind]
+
+    def pause(self) -> None:
+        """Hold whatever this power-up is playing while the game is paused.
+
+        DIVERGENCE (user request): `pauseGame` 0x10005b5fc stops the timers and pauses the bricks and the
+        ambience, and says nothing about a power-up in hand - as it says nothing about the weapon
+        (`Weapon.pause`).  The Minigun's fire loops, so it went on firing through the pause menu and only
+        stopped when the game came back and its time ran out.
+        """
+        if self.held:                                     # already held: a second pause must not forget
+            return                                        # what the first one is holding
+        self.held = True
+        self.paused_sounds = []
+        if self.playlist is None:
+            return
+
+        def hold(sound):
+            if sound is not None and sound.playing:
+                sound.pause()
+                self.paused_sounds.append(sound)
+            return False
+
+        self.playlist.each(hold)
+
+    def resume(self) -> None:
+        self.held = False
+        for sound in self.paused_sounds:
+            sound.resume()
+        self.paused_sounds = []
 
     def preload(self) -> None:                            # 0x10001da24
         pass
@@ -178,6 +209,21 @@ class PowerUp:
                 seconds = len(data) / float(rate) if rate else 0.0
         return min(seconds, self.FELT_START_MAX) if seconds > 0.0 else self.FELT_START
 
+    def stop_after_player_was_killed(self) -> None:
+        """PORT ADDITION: the player is dead, so the power-up stops where it is (user request).
+
+        The original leaves it running: the Minigun goes on firing into the death overlay, and the wind and
+        the coil go on with it.  Its gun was heard for ten seconds either way, being played once through;
+        now that the port loops it for as long as the gun fires, it would be heard until the run is cleaned
+        up - which is a good while, with the revive screen in between.  The enemies, the diamonds and the
+        passers-by are all stopped on death (`stopAllEnemiesAfterPlayerDeathByEnemyWithName:`); this is the
+        power-up joining them.
+        """
+        if not getattr(self, 'active', False):
+            return
+        self.active = False
+        self.clean()
+
     def _clean_with_kill_report(self) -> None:
         """Shared tail of the Minigun/Fireworks/Tesla clean: report and reset enemyKillsWithPowerup."""
         from .ingame_stats import InGameStats
@@ -215,7 +261,14 @@ class MinigunPowerUp(PowerUp):
     def use(self) -> None:                                # 0x1000b2850 (no [super use])
         self.loop_sound = self.playlist.any_sound_containing('minigun_fire') if self.playlist is not None else None
         if self.loop_sound is not None:
-            self.loop_sound.play(False)
+            # DIVERGENCE: `play:0` - the gun is fired once through and not looped, and its recording is 10
+            # seconds (minigun_fire_a 10.03, _b 9.98) against a duration of 5, 7.5, 10 or 12.5 by upgrade
+            # (Weapons.plist, PowerUps, Minigun).  Fully upgraded the gun therefore falls silent two and a
+            # half seconds before it stops firing - the bullets still land, the gun is not heard - and the
+            # tail comes out of that silence.  It loops here (user request); `update:` stops it at the end
+            # as it always did, so nothing else changes, and the recording is gunfire end to end, with no
+            # silence at either edge to be heard as a seam.
+            self.loop_sound.play(True)
             self.loop_sound.set_gain(0.4)
         self.time_since_activation = 0.0
         self.active = True

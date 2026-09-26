@@ -8,7 +8,7 @@ import pygame
 
 from ..game import data
 from ..platform.speech import Speech
-from .screens import MenuItem, MenuScreen, PlaceholderScreen, Screen
+from .screens import MenuItem, MenuScreen, PlaceholderScreen, Screen, joined
 
 log = logging.getLogger('ui.host')
 
@@ -19,8 +19,22 @@ class AlertScreen(MenuScreen):
     def __init__(self, host, title: str, message: str, buttons):
         """`buttons` are (label, action) pairs, or (label, action, hint) where a button needs saying more
         about - a PORT ADDITION: UIAlertView buttons have no hints."""
-        super().__init__(host, title=f'{title}. {message}')
-        self.items = [MenuItem(button[0], (lambda a=button[1]: (host.pop_overlay(), a and a())),
+        super().__init__(host, title=joined([title, message]))
+
+        def pressed(action):
+            """PORT ADDITION: an alert's button clicks like every other button in the game (user request).
+            UIAlertView's own buttons are silent, being the system's rather than `ADButtonWithFont`s, but
+            this is the only button on the screen and pressing it should sound like pressing one.  The
+            click comes after the action, as `-[ADButtonWithFont awakeFromNib]` 0x100072f7c puts it."""
+            def press():
+                from .accessibility import play_button_click   # here: accessibility imports this module
+                host.pop_overlay()
+                if action:
+                    action()
+                play_button_click()
+            return press
+
+        self.items = [MenuItem(button[0], pressed(button[1]),
                                hint=button[2] if len(button) > 2 else None) for button in buttons]
         self.back_action = lambda: host.pop_overlay()
 
@@ -32,6 +46,7 @@ class ScreenManager:
         self._held = None                                 # (event, screen, when the next repeat is due)
         self._pad_jump = False                            # Cross held: the menus' Control (see below)
         self._pad_jumped = False                          # and whether it was used as that, not tapped
+        self._pad_in_game: set = set()                    # buttons whose press the game took (see below)
         self.request_quit = lambda: log.info('quit requested with no window running')
 
     # --- services --------------------------------------------------------------------------------
@@ -137,8 +152,20 @@ class ScreenManager:
                 self._pad_input(pressed, source, name)
             return
         if event.type == pygame.KEYDOWN:
+            if event.key in (pygame.K_LCTRL, pygame.K_RCTRL) and not getattr(event, 'pad', False):
+                # PORT ADDITION: Control stops the speech, as it does in a screen reader (user request).
+                # The key goes on to the screen as well: it is the melee key, and held with an arrow it
+                # still reaches the first or last row.
+                Speech.shared().stop()
             top = self.top()
             if top is not None:
+                # PORT ADDITION: in the menus every key cuts what SAPI 5 is saying (user request), since a
+                # key means the player has moved on - including the key that changes Speech output away
+                # from SAPI 5, which used to leave its line playing to the end.  Not in a game: there a key
+                # is firing or turning, and an announcement is not something the player asked to stop.
+                from .gameplay_screen import GameplayScreen
+                if not isinstance(top, GameplayScreen):
+                    Speech.shared().interrupt_sapi()
                 self._hold_navigation_key(event, top)
                 top.key_down(event)
         elif event.type == pygame.KEYUP:
@@ -168,10 +195,25 @@ class ScreenManager:
         from .gameplay_screen import GameplayScreen
         top = self.top()
         if isinstance(top, GameplayScreen):
+            if pressed:
+                self._pad_in_game.add(name)               # what the game takes, its letting go belongs to
+            else:                                         # the game as well - never to whatever is there by
+                self._pad_in_game.discard(name)           # then (below)
             (top.pad_down if pressed else top.pad_up)(source, name)
             return
         if not pressed and isinstance(self.screen, GameplayScreen):
             self.screen.pad_up(source, name)              # held into a pause: let go in the game as well
+        if not pressed and name in self._pad_in_game:
+            # this button was pressed in a game and let go somewhere else, because
+            # the press itself took the game away - Cross skipping the intro is the one that bites.  Cross
+            # is Enter on the way up, since held it is the menus' Control, so that Enter arrived on the menu
+            # the skip had just opened and pressed whatever it had landed on: one press of Cross skipped the
+            # intro and started a game from the main menu's Play button.  A press the game took is finished
+            # in the game.
+            self._pad_in_game.discard(name)
+            if name == self.JUMP_BUTTON:
+                self._pad_jump = False
+            return
         takes = getattr(top, 'takes_pad_input', None)
         if pressed and takes is not None and takes():     # Settings is waiting for a button to bind
             if name == self.JUMP_BUTTON:

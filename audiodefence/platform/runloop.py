@@ -28,9 +28,6 @@ class Timer:
     def invalidate(self) -> None:
         self.valid = False
 
-    def is_valid(self) -> bool:
-        return self.valid
-
 
 class RunLoop:
     _main: 'RunLoop | None' = None

@@ -19,6 +19,7 @@ class StatusBar:
     """ADStatusBarViewController (nib ADStatusBarViewController, tag-2781 view #87)."""
 
     def __init__(self):                                   # initWithNibName:bundle: 0x10001bd70 / loadView 0x10001c034
+        self.screen = None                                # the screen it was made for (`_wanted`)
         self.view = View('', (0, 0, 568, 50), accessible=False, name='#87')
         self.back_button = Button('Back', (8, 0, 150, 40), parent=self.view, name='#74')
         self.back_button.text = '  BACK'
@@ -165,15 +166,29 @@ class StatusBar:
             self.armory_button.user_interaction_enabled = True
         RunLoop.main().call_later(0.5, completion)
 
+    # DIVERGENCE (user request): what the coins and the diamonds are shown on is decided by where the
+    # player is, not by the screen asking.  In the original each screen says (setCurrenciesVisibility:
+    # 0x10001d4b0, setDiamonsdsVisibility: 0x10001d5c8 in its viewDidLoad), and what came out of that is
+    # neither here nor there: Settings shows them, the Play menu does not, the challenge list does, the
+    # screen after a challenge does not.  They belong to Play: the menus under it are where coins and
+    # diamonds are earned and spent, and everywhere else they are two more things to walk past.  So they
+    # are shown from the Play menu until the player is back at the main menu (`App.in_play`), which also
+    # means a play mode added later has them without being told to, and hidden anywhere else.  A screen
+    # can still keep them off while the player is inside Play by saying `shows_currencies = False`; the
+    # pause screen does, being a fight rather than a menu.
+    def _wanted(self) -> bool:
+        from ..app import App
+        return bool(App.delegate().in_play) and getattr(self.screen, 'shows_currencies', True)
+
     def set_currencies_visibility(self, visible: bool) -> None:     # 0x10001d4b0
-        self.currencies_view.hidden = not visible
+        self.currencies_view.hidden = not self._wanted()
 
     def set_armory_button_visibility(self, visible: bool) -> None:  # setArmoryButtonVisibilty: 0x10001d514
         self.armory_button.hidden = not visible
         self.armory_button.user_interaction_enabled = bool(visible)
 
     def set_diamonds_visibility(self, visible: bool) -> None:       # setDiamonsdsVisibility: 0x10001d5c8
-        self.diamonds_label.hidden = not visible
+        self.diamonds_label.hidden = not self._wanted()
 
 
 class NoBarScreen(AccessibleScreen):
@@ -196,6 +211,7 @@ class NoBarScreen(AccessibleScreen):
     def load_status_bar(self) -> None:                    # 0x100018f50
         from ..app import App
         sb = StatusBar()
+        sb.screen = self
         self.status_bar_view_controller = sb
         view = getattr(self, 'view', None)
         if view is not None:                              # [[self view] addSubview:] at origin 0,0
@@ -203,6 +219,8 @@ class NoBarScreen(AccessibleScreen):
             view.children.append(sb.view)
         else:
             self.roots.append(sb.view)
+        sb.set_currencies_visibility(True)                # whatever the screen goes on to ask for, the
+        sb.set_diamonds_visibility(True)                  # rule decides: a screen that never asks is right
         sb.back_button.add_target(self.back_button_pressed)
         sb.delegate = self
         App.delegate().status_bar = sb

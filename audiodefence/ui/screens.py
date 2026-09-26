@@ -103,6 +103,28 @@ class MenuItem:
         return text
 
 
+#: what already ends a sentence, so a full stop after it would be a second one
+ENDS_A_SENTENCE = '.!?:'
+
+
+def joined(parts) -> str:
+    """PORT ADDITION: the parts of a line, read one after another with a full stop between them - and not
+    a second one where a part already ends a sentence of its own.
+
+    An alert is two of those in a row: its title ends in a mark ("Not enough Coins!") and its message in a
+    stop, so the line read out was "Not enough Coins!. ... playing Endless Mode.. OK".
+    """
+    out = ''
+    for part in parts:
+        part = str(part).strip()
+        if not part:
+            continue
+        if out:
+            out += ' ' if out[-1] in ENDS_A_SENTENCE else '. '
+        out += part
+    return out
+
+
 class MenuScreen(Screen):
     title = ''
 
@@ -127,7 +149,7 @@ class MenuScreen(Screen):
         if self.items:
             self.index = min(self.index, len(self.items) - 1)
             parts.append(self.items[self.index].spoken())
-        self.speak('. '.join(parts))
+        self.speak(joined(parts))
 
     def current(self) -> MenuItem | None:
         return self.items[self.index] if self.items else None
@@ -154,7 +176,8 @@ class MenuScreen(Screen):
             item.action()
 
     def key_down(self, event) -> None:
-        from .accessibility import menu_tick, navigation_key   # here: accessibility imports this module
+        from .accessibility import (menu_tick, navigation_key,   # here: accessibility imports this
+                                    play_button_click)           # module
         if menu_music_volume_key(self, event):
             return
         k = event.key
@@ -168,6 +191,7 @@ class MenuScreen(Screen):
         elif k in (pygame.K_RETURN, pygame.K_KP_ENTER):   # not Space: it is the fire key in a game
             self.activate()
         elif k == pygame.K_ESCAPE and self.back_action is not None:
+            play_button_click()                           # PORT ADDITION: as pressing Back does
             self.back_action()
 
 

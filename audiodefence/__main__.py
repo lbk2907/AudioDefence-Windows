@@ -115,14 +115,32 @@ def main(argv=None) -> int:
         pass
     finally:
         log.info('shutting down')
+        closing = time.perf_counter()
         try:
+            try:
+                # PORT ADDITION: silence the game before taking it apart.  Shutting the engine down, closing
+                # the speech card and pygame.quit() are all Python work of a few tens of milliseconds each,
+                # and the game's own sound is mixed by Python on the audio thread (the reverb bus): with the
+                # music still playing it stuttered on the way out, stopping and starting between the steps.
+                from .s3d import openal as oal
+                engine.al.alListenerf(oal.AL_GAIN, 0.0)   # one call: silent before any of the slow work
+                engine.stop_all()
+            except Exception:
+                log.exception('could not stop the sounds')
             try:
                 Pads.shared().stop()                    # a DualSense keeps a trigger feel until told not to
             except Exception:
                 log.exception('could not reset the controllers')
+            try:
+                Speech.shared().shutdown()              # and speech lets its own card go before the engine's
+            except Exception:
+                log.exception('could not stop the speech')
             engine.shutdown()
         finally:
             pygame.quit()
+            # PORT ADDITION: the last line says how long the closing took, so "it was slow to close" can be
+            # answered from a log instead of a stopwatch.  What is left after it is the interpreter itself.
+            log.info('closed in %d ms', (time.perf_counter() - closing) * 1000.0)
     return 0
 
 

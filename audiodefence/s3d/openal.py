@@ -228,10 +228,6 @@ class AL:
 
     def filteri(self, f, p, v): self.ext('alFilteri', None, [c_uint, c_int, c_int])(f, p, v)
     def filterf(self, f, p, v): self.ext('alFilterf', None, [c_uint, c_int, c_float])(f, p, v)
-    def effecti(self, e, p, v): self.ext('alEffecti', None, [c_uint, c_int, c_int])(e, p, v)
-    def effectf(self, e, p, v): self.ext('alEffectf', None, [c_uint, c_int, c_float])(e, p, v)
-    def slotI(self, s, p, v): self.ext('alAuxiliaryEffectSloti', None, [c_uint, c_int, c_int])(s, p, v)
-    def slotF(self, s, p, v): self.ext('alAuxiliaryEffectSlotf', None, [c_uint, c_int, c_float])(s, p, v)
 
     def get_int(self, device, param: int) -> int:
         v = c_int(0)

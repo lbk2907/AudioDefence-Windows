@@ -49,7 +49,7 @@ from .remotezip import RemoteZip, RemoteZipError, USER_AGENT
 
 log = logging.getLogger('platform.updater')
 
-REPOSITORY = 'lbk2907/AudioDefence-Windows'
+REPOSITORY = 'lbk2907/AudioDefence'
 LATEST_RELEASE = 'https://api.github.com/repos/%s/releases/latest' % REPOSITORY
 RELEASES_PAGE = 'https://github.com/%s/releases' % REPOSITORY
 TIMEOUT = 20

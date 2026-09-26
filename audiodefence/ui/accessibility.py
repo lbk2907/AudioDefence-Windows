@@ -35,7 +35,7 @@ from .. import localization
 from .. import localization
 from .. import localization
 from ..s3d.engine import S3DEngine
-from .screens import Screen, menu_music_volume_key
+from .screens import Screen, joined, menu_music_volume_key
 
 log = logging.getLogger('ui.a11y')
 
@@ -434,7 +434,8 @@ class AccessibleScreen(Screen):
 
     def post_screen_changed(self, element: View | None, prefix: str | None = None) -> None:
         # UIAccessibilityScreenChangedNotification.  PORT ADDITION: ``prefix`` names what the player just
-        # opened - a tab, a category - so it is heard before the element VoiceOver lands on.
+        # opened - a tab, a category - so it is heard before the element VoiceOver lands on.  It is joined
+        # to that element with a full stop, so it does not end with one of its own.
         self._screen_changed = True
         self._pending_focus = (element,)
         self._pending_prefix = prefix
@@ -493,14 +494,34 @@ class AccessibleScreen(Screen):
                 element = self.first_content_element(elements)
             self.focus = element
             if element is not None:
-                self.speak('%s. %s' % (prefix, element.spoken()) if prefix else element.spoken())
+                self.speak(joined([prefix, element.spoken()]) if prefix else element.spoken())
             elif prefix:
                 self.speak(prefix)
 
-    def accessibility_perform_escape(self) -> None:
+    def accessibility_perform_escape(self) -> bool:
+        """Go back, and say whether there was anywhere to go.
+
+        PORT ADDITION: the answer is what makes the sound (`key_down`).  Pressing Back and pressing Escape
+        run the same method - the click lives on the button, not on what it does - so the two ways of
+        leaving a screen sounded different.  A screen that closes something of its own instead, like a
+        weapon page or an open list, overrides this and answers True for that; one that is busy answers
+        False and stays silent, so silence means nothing happened.
+        """
         # -[ADViewController accessibilityPerformEscape] 0x1000728e4
-        if self.has_escape:
-            self.back_button_pressed()
+        if not self.has_escape:
+            return False
+        went = self.goes_back()
+        self.back_button_pressed()
+        return went
+
+    def goes_back(self) -> bool:
+        """Whether this screen has anywhere to go back to.
+
+        `-[ADNoBarViewController backButtonPressed]` 0x1000195e8 only writes a line to the log, so a screen
+        that never replaced it - the main menu among them - answers Escape by doing nothing at all.  It is
+        still sent, as the original sends it; it simply does not count as having gone anywhere, so nothing
+        is heard (user request)."""
+        return type(self).back_button_pressed is not AccessibleScreen.back_button_pressed
 
     # REMOVED (user request): the magic tap.  VoiceOver's two-finger double tap is a gesture with no
     # keyboard equivalent on iOS, and the port had bound it to F2 - a second way to press a button that
@@ -554,4 +575,5 @@ class AccessibleScreen(Screen):
             if self.focus is not None and self.focus in self.elements():
                 self.focus.activate(shift)
         elif k in (pygame.K_ESCAPE, pygame.K_BACKSPACE):
-            self.accessibility_perform_escape()
+            if self.accessibility_perform_escape():
+                play_button_click()                       # PORT ADDITION: as pressing Back does

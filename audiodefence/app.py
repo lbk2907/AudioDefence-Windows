@@ -33,6 +33,9 @@ class App:
         self.fade_out_timer = None
         self.start_theme_after_fade = False
         self.status_bar = None                             # the last loaded ADStatusBarViewController
+        #: PORT ADDITION: whether the player is inside Play, which is what the coins and the diamonds are
+        #: shown on (StatusBar._wanted); set by `go_to_play_menu` and cleared by `go_to_main_menu`
+        self.in_play = False
 
     # --- launch ----------------------------------------------------------------------------------
     def application_did_finish_launching(self) -> None:  # 0x10008099c
@@ -193,10 +196,14 @@ class App:
         self.load_view_controller_named('ADWorldChallengeListViewController')
 
     def go_to_main_menu(self) -> None:                    # 0x1000823d8
+        self.in_play = False                              # out of Play: no coins or diamonds (StatusBar)
         self.start_menu_music('main_menu_theme')
         self.load_view_controller_named('ADMainMenuViewController')
 
     def go_to_play_menu(self) -> None:                    # 0x100082474
+        # PORT ADDITION (user request): everything from here until the main menu is "inside Play", and that
+        # is what the coins and the diamonds are shown on - a mode added later included (StatusBar._wanted)
+        self.in_play = True
         self.start_menu_music('main_menu_theme')
         self.load_view_controller_named('ADPlayMenuViewController', should_animate=False)
 

@@ -92,9 +92,9 @@ rest, from how the cursor moves through a screen to how a controller vibrates.  
 restore their own defaults, and Miscellaneous holds the one button that resets every setting.
 
 PORT ADDITION: the pair that does not move the cursor changes tab (`cross_axis_key`), so the two are always
-different keys.  The armory steps through its four tab buttons (`ArmoryScreen.step_tab`, skipping Loadout
+different keys.  The armory steps through its four tab buttons (`ArmoryScreen.move_tab`, skipping Loadout
 when it is not enabled, since its button only raises the EQUIP alert) and the settings panel steps through
-its categories (`ControlSchemePanel.step_category`), which is the only way to reach one: the settings
+its categories (`ControlSchemePanel.move_category`), which is the only way to reach one: the settings
 screen opens inside Aiming with that category's heading as its first row, so there is no list of categories
 and Escape always leaves the screen.  Both name what they opened before reading the element they land on
 (`post_screen_changed(element, prefix)`), and both hold at the ends.  The original has neither:
@@ -221,6 +221,35 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
 * The settings rows play `click_button` when pressed.  The original's accessible table is silent, but its
   sighted twin's rows are `ADButtonWithFont`s, which click (`-[ADButtonWithFont playSound]` 0x100073578) -
   and the port's categories are pressed like buttons, so they click like them.
+* Escape and Circle click, as pressing Back does (user request).  They already run the same method the
+  Back button runs - `-[ADViewController accessibilityPerformEscape]` 0x1000728e4 calls
+  `backButtonPressed` - but the click lives on `ADButtonWithFont`, not on what the button does, so leaving
+  a screen by key was silent and leaving it by button was not.  Rather than a click at each place that
+  goes back, `accessibility_perform_escape` now answers whether it went anywhere and the key site makes
+  the sound once; a screen that takes Escape for something of its own (the armory closing a weapon page,
+  Settings closing an open list) answers True for that, and one that is busy (the tarot screen while the
+  cards are dealt) answers False and stays silent.  `MenuScreen` clicks behind its own guard, which is the
+  same question asked of a screen that has no nib.  Silence means nothing happened.
+
+  `has_escape` alone was not that question: `-[ADNoBarViewController backButtonPressed]` 0x1000195e8 only
+  writes a line to the log, and a screen that never replaced it answers Escape by doing nothing.  The main
+  menu is one, and it clicked on a key that did nothing at all.  `AccessibleScreen.goes_back` asks whether
+  the screen has a back of its own; the escape is still sent either way, as the original sends it.  Of the
+  game's screens the main menu is the only one this quietens.
+
+* A Berserk charging the player keeps its growl when it is hit (user request).  A hit stops the enemy's
+  own loop so the pain sound can be heard and asks for it back when that sound ends
+  (`-[ADEnemy playHitSoundForDamages:]` 0x100062db8), through `walkOrAgressive` 0x10005fe54 - which answers
+  for state 2 and state 3 and nothing else.  A woken Berserk charges in state 8, so the first shot that
+  landed on it silenced it for good: it ran the player down without a sound, while its hit sounds went on
+  playing, which is what made it look like the sound had been lost rather than stopped.  State 8 now starts
+  the "_aggressive" loop again.  `berserk` 0x100060824 cannot be used for that - it returns at once when
+  the state is already 8, being the method that sets it.
+
+* An alert's buttons click too (user request).  `UIAlertView`'s buttons are the system's, not
+  `ADButtonWithFont`s, so the original's "Not enough Coins!" closes in silence; in the port the alert is a
+  screen of its own and its OK is the only thing on it, so pressing it sounds like pressing a button.  The
+  click comes after the button's action, where `-[ADButtonWithFont awakeFromNib]` 0x100072f7c puts it.
 * `-[ADAppDelegate startMenuMusic:]`'s sound monitor returns an undefined BOOL (a tail call into
   `objc_release`); the port keeps monitoring.
 * ARC deallocation side effects (`-[ADWeapon dealloc]` deactivating the weapon playlist, `-[ADPlayer dealloc]`)
@@ -492,6 +521,200 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   Triangle Delete, L1/R1 the tab arrows, L2/R2 Page Down/Up), and those key presses carry `pad`, so a key
   being captured in Settings -> Keyboard is cancelled by a controller button instead of taking the key it
   stands for.  SDL is asked (before pygame.init) to let PlayStation pads rumble over Bluetooth.
+* A wind-down does not cut the last one off (user request).  A weapon has one sound per file, so playing
+  its "_tail" again while the last one is still sounding restarts it (`S3DSound.play`: active -> stop, then
+  `_restart_play`).  The Machine Gun's tail runs 1.8 seconds and a burst can be a tenth of that, so tapping
+  the trigger cut the wind-down off and started it again at every tap.  The second one is given a voice of
+  its own instead (`S3DEngine.play_copy_of`), the way an overlapping shot already is in
+  `-[ADWeapon playSingleShootSound]`.
+
+* The low-ammo loop lives with the clip, not with the trigger (user request).  `-[ADWeapon
+  continuousStart]` 0x1000154a4 resolves the shot that starts the burst and then builds the "_warningloop"
+  and sets its gain to 0, whatever the clip holds; `resolveShoot` 0x100015a1c does set that gain by what is
+  left, but it ran before the loop was built, so its setting lands on the loop from the burst before and is
+  overwritten with 0.  Only the burst's *second* shot could raise it, and that one is a whole fire rate
+  away, so the Tactical Rifle (0.25 s) fired in taps never warned however little was left.  Starting it at
+  the right level was not enough on its own: `continuousStop` 0x1000157f8 stops it with the burst, so it
+  can only ever sound *underneath* the gun, and measured over a burst it is 12 dB below the gun's own
+  "_conti" loop.  Held down that still works - the beeps keep coming and the ear picks the rhythm out of
+  the noise - but a tap is one beep under one shot, and it is not heard at all.
+
+  The loop now follows the clip (`Weapon.update_low_ammo_warning`, called from `update:`): it starts when
+  the clip is down to its last fifth - `resolveShoot`'s own test, pulled out as `Weapon.running_low` - and
+  keeps beeping between bursts, where nothing is over it, until the gun is reloaded, run dry, put away, or
+  the player dies.  A gun picked up already low warns without a shot being fired.  `resolveShoot`'s gain
+  line goes with the old lifetime: the loop being there is the warning now.
+
+* Running the clip out with the trigger held is answered (user request).  Two things were in the way.
+  `-[ADWeapon update:]` 0x100014c8c plays the click first and stops the gun after it, so the "Reload"
+  call-out began underneath the gun still firing; the gun is stopped first here.  And `playClickSound`
+  0x100015f0c says nothing if the announcer spoke in the last five seconds, which in a fight is most of the
+  time - so the shot that ran the clip out often got no call-out at all, and one arrived later, which is
+  what it sounded like when the trigger was let go.  That shot now asks for the call-out whatever the gate
+  says (`play_click_sound(announce=True)`); the clicks that follow are still gated, so it is said once.
+  A gun with no "_empty" recording answers with its own short warning instead (user request): once for a
+  press, and looping while the trigger is held, until it is let go, reloaded or put away
+  (`Weapon.empty_warning`, `start_empty_loop`).  The loop is a copy of that sound (`S3DSound.copy`), since
+  the press plays the same recording and playing a sound that is already sounding restarts it - they would
+  cut each other, and a restart left pending when the trigger was let go started the warning again after it
+  had been stopped.  Its own "_warningloop" is deliberately not used for this: that is the low-ammo loop
+  under continuous fire, and running low and running out would sound the same.  The Machine Gun, the Claymore and the melee weapons have no empty click in
+  `game/sounds/_weapons`, so an empty trigger on them made no sound at all; the Micro SMG, the Pistol and
+  nine others do have one and are untouched.  Nothing is taken from anywhere else: the short warning is
+  never played by the game as it stands, since `anySoundWihSuffix:@"_warning"` 0x100015dec asks for a name
+  ending in "_warning" and the file is "_warning_b", so it does not match in the original either.  The
+  looping one does have a job - it is the low-ammo loop under continuous fire - and it is the same sound
+  here, told apart by there being no gunfire under it.
+
+* A gun stops firing when it is put away (user request).  `-[ADWeaponManager selectNextWeapon]`
+  0x1000a9e04 interrupts a reload on the outgoing weapon and leaves everything else as it is, and only the
+  current weapon is updated (`update:` 0x1000a8c38): a gun switched away from mid-burst was left in state 3
+  - Continuous - with its "_conti" loop playing and nobody to stop it, which is what was heard as a gun that
+  would not stop.  No reload was called out with it either, since the gun the player was then holding had
+  never been started and so never ran dry.  `Weapon.stop_firing_now` stops the loop, plays the tail the
+  state machine would have played and puts the weapon back to Idle; `continuous_stop` is unchanged for the
+  ordinary release, where handing over to state 4 is right because the weapon is still being updated.
+
+  It runs *after* 0x1000a9e04's own reload check, and must: it ends by putting the weapon back to Idle, so
+  asked afterwards whether the outgoing gun was reloading the answer was always no, and the interrupt the
+  original does never ran.  The reload went on sounding on a gun that was no longer in hand, where nothing
+  could reach it - not even melee, which interrupts the reload of `currentWeapon` only.  (Until
+  2026-09-25 it ran first, and that is what it cost.)
+
+* A power-up in hand stops when the player dies (user request).  `stopAllEnemiesAfterPlayerDeathByEnemy
+  Name:` 0x1000c71b4 stops the enemies, the diamonds and the passers-by, and leaves the power-up running:
+  the Minigun fires on into the death overlay, and the wind and the coil go on with it, until the run is
+  cleaned up 0.1 s after killGameplay - which is a good while later, with the revive screen in between.
+  `PowerUp.stop_after_player_was_killed` ends it where it is, and the death handler calls it as it calls
+  the others - along with `WeaponManager.stop_firing_after_player_was_killed` for the gun, since the trigger
+  is still down, no release is coming, and the gun fired on into the death overlay (user request).  It matters more since the gun loops (above): played once through it fell quiet by itself.
+
+* The Minigun power-up's gun is heard for as long as it fires (user request).  `-[ADMinigunPowerUp use]`
+  0x1000b2850 plays `minigun_fire` with `play:0`, once through, and the recording is 10 seconds
+  (`minigun_fire_a` 10.03, `_b` 9.98) against a duration of 5, 7.5, 10 or 12.5 seconds by upgrade (Weapons
+  .plist, PowerUps, Minigun).  Fully upgraded the gun therefore falls silent two and a half seconds before
+  it stops firing - the bullets still land, the gun is not heard - and `minigun_tail` comes out of that
+  silence.  The port loops it; `update:` 0x1000b2934 stops it where it always did, and the recording is
+  gunfire end to end, with no silence at either edge to be heard as a seam.
+
+* A weapon's sounds start where the sound does, not where the file does (user request).  Some of the game's own
+  recordings open with a moment of nothing - the Machine Gun's `_fire_a` has 133 ms of it, the Grenade
+  Launcher's 109, the Bazooka's 62 - and `-[ADWeapon playSingleShootSound]` plays them from the top, so
+  every press of the trigger waits that out before it is heard.  Tapping the Machine Gun, which is how it is
+  fired, that silence is the gap between the shots.  The files are left as they are: `decoder.lead_in`
+  measures the silence once from what the decoder already holds, and `S3DSound.skip_to` starts the source
+  past it (`AL_SEC_OFFSET` before the play, in `_play_as_is`, in `copy` and in `play_copy_of`, so an
+  overlapping shot starts there too).  It is not only the shot: the Machine Gun's tail opens with the same
+  133 ms and its deploy with 145, so letting go after a burst left a gap before the gun wound down, which
+  is what it sounded like.  Every sound a weapon takes from its playlist goes through `weapon._at_the_sound`
+  - shot, tail, continuous loop, warning, empty click, reload, deploy, voice, and the melee hit and miss -
+  and only the silence is skipped: a recording that starts at once, like the Pistol's, is untouched, and a
+  file that is quiet for more than a quarter of a second is left alone in case the quiet is the sound
+  itself.
+
+* Escape does nothing on the Endless screen while the cards are being dealt (user request).  The Back
+  button is dimmed for those two seconds (`deactivate_buttons`), and so is Play in this port, but
+  `-[ADViewController accessibilityPerformEscape]` 0x1000728e4 goes straight to `backButtonPressed` without
+  asking whether the button it stands for can be pressed - so the original leaves the screen mid-deal, and
+  the port did too, by Escape or by the controller's Circle, which stands for it.  `TarotScreen.dealing` is
+  on from the deal until `_cards_dealt`, and while it is on the screen holds rather than leaving.  It said
+  "The cards are still being dealt" at first and that was taken off again (user request): the deal is two
+  seconds, the cards speak for themselves at the end of it, and a sentence in the way of them is one more
+  thing to sit through.  `back_button_pressed` holds as well, for anything else that might reach it.
+
+* PORT ADDITION: SAPI 5 is spoken on a thread of its own, and the game plays it rather than Windows
+  (`platform/speech_audio.py`, `speech._SapiThread`; Settings -> Speech -> **Use modern output**, on by
+  default, `sapiModernAudio`).  Two things were measured on the user's machine and both are fixed here.
+  Every SAPI call costs the thread that makes it - 10 ms to hand over a line, 26 to 30 ms when it cuts off
+  the one before, up to 50 ms to stop - which on the main thread is a stutter in the arena each time a row
+  is read; the calls are made on `_SapiThread` now, and handing over a line costs the game 1.3 ms.  And
+  SAPI hands its audio to Windows, which buffers it: asked to stop, the voice keeps talking for what is
+  already on its way to the card - 29 ms after 50 ms of speech, 59 after 200, **100 after 500**, growing
+  the longer it has been talking - which for a player who interrupts at every row is most of what makes a
+  voice feel slow.  With the row on, SAPI is given a stream of the game's own as its sound card
+  (`platform/speech_stream.py`, an `ISpAudio` handed to `ISpVoice::SetOutput`) and writes the voice into it
+  as it is synthesised, in pieces of about a tenth of a second, at the card's own rate and shape (44.1 kHz,
+  mono, 16 bit - a voice is mono, and stereo doubled every byte for a copy of itself); `SpeechAudio` plays
+  what arrives through an SDL audio device the speech opens for itself, as `haptic_audio` does for a
+  DualSense.  Where that cannot be done - an older comtypes, a SAPI that will not take the stream - the
+  line is rendered into an `SpMemoryStream` instead and handed over when it is made (`_render`), which is
+  how this was built first and is 9 to 100 ms slower depending on the line's length; and where the card
+  itself cannot be had, Windows speaks as it always did.  It is a device of its own on purpose: the engine is OpenAL, whose
+  current context belongs to the thread that set it and which the reverb bus moves between two devices as
+  it renders, so speech arriving from its own thread and touching any of that stops the game's sound dead -
+  which is what it did, the first time this was built on an engine source.  Two more things were measured
+  and fixed the same way.  A rendered line is rendered in pieces (`_SapiThread.pieces`, the first short), so
+  the first sound comes 30 ms after the key rather than at the end of the whole line; a streamed one needs
+  no pieces at all, since the sound leaves SAPI as it is made - measured from the key to the first sound,
+  6 ms for a word, 14 ms for a settings row and 23 ms for a paragraph, against 25, 25 and 37 ms rendered,
+  and 121 ms rendered for a piece of the length the splitter allows.  Two ways of killing Python 3.14 were
+  found while building the stream, both avoided and both written up in `speech_stream.py`: a ctypes call
+  that lets the interpreter go, made from inside one of SAPI's callbacks, and letting the stream go while
+  SAPI still holds it (which is why `_to_windows` runs before the thread quits, and why `_Sapi.shutdown`
+  waits a moment for the thread when a stream is out).  SAPI lets the stream go when it takes its card
+  back, and one it has let go of cannot be handed over again, so each install makes a new one.  Whichever
+  way the setting is changed, the row tells the thread about it (`modern_audio_changed`) rather than
+  leaving it to be noticed when the next line is spoken: the line that says it has been turned off is
+  itself interrupted often enough - by the sample line after it, or by the next key - that the hand-back
+  could wait for a line that never came, and the game was still playing SAPI itself in the meantime.  Which
+  way the voice is going out is in the log either way, one line each way round.  Whichever
+  way the setting is changed, what is being said when it changes is cut first: turning it on while Windows
+  was speaking left Windows playing 0.2 s of the old line over the top of the new one, out of its own
+  buffer, which the switch cannot reach once the voice is pointed elsewhere.  And the
+  bytes are read
+  out of the stream with `IStream.RemoteRead` rather than asked for with `GetData`, which hands a million
+  samples over one COM element at a time with the interpreter held: 61 ms against 1 ms for a page of the
+  encyclopedia, and since the game mixes its own sound in Python on the audio thread (the reverb bus), 61 ms
+  of held interpreter is a gap in the arena.  With both, the longest the main thread waits while a page is
+  spoken is 2.4 ms.  SAPI puts silence in front of every utterance it makes - measured on the user's voice,
+  96 ms at rate 0, 56 ms at rate 5, 22 ms with the rate boost - and Windows plays that silence too, which is
+  half of what a line costs before it is heard; a line the game plays itself is bytes in a list, so the
+  silence comes off the front of it (`without_the_lead_in`, ten milliseconds left so the voice is not cut
+  into, and only the front of the first piece: the quiet between sentences is the voice's own timing).
+  Rendering takes the voice's output away from Windows, so the Windows path asks for it
+  back (`_to_windows`, the card kept from before the first render): without that, turning Modern audio
+  output off left the voice speaking into memory nobody played, which is silence until the game restarts.
+  The card is watched for going away: a sound device can be unplugged, a controller with a speaker in it can
+  drop off, Windows can move to another one, and SDL says nothing about any of it - it stops asking for
+  sound, and with nothing watching, the speech is silent for the rest of the game.  Before each line the
+  card is asked what it is doing (`still_there`, `SDL_GetAudioDeviceStatus`), and failing that whether it
+  has asked for anything in the last quarter second while something was waiting for it; a card that has
+  gone is dropped and another opened at once, and with none to be had, Windows speaks until there is one.
+  NVDA's own player copes with the same thing, and none of its code is here.
+  `Speech.shutdown`, called before the engine's, stops the voice and closes the card, so a line still
+  waiting is not heard carrying on after the game has fallen silent.  Closing it goes through SDL itself
+  (`SDL_PauseAudioDevice` by ctypes) rather than through pygame: SDL waits for the audio callback to return
+  before it pauses, that callback is Python and wants the interpreter, and pygame's `pause` holds the
+  interpreter while it waits - so the game hung on the way out about two closes in three, with the reverb
+  bus (Python on an audio thread as well) holding the interpreter in the meantime.  ctypes lets the
+  interpreter go while it calls, which lets the callback finish.  The fade is played out first, about the
+  card's own buffer's worth, so the card is not cut off mid-waveform: that was the click heard as the game
+  closed.  Closing the game is all Python work -
+  measured: the engine's own stop 63 ms, the speech card 27, `pygame.quit()` 43 - and the arena is mixed by
+  Python on the audio thread, so with the music still playing it stuttered between the steps: the listener's
+  gain goes to zero first (one call), and the rest happens in silence.  The last line of the log says how long the closing took (`closed in N ms`, counted from the `shutting
+  down` line), so a report of a slow close can be answered from a log rather than a stopwatch; what happens
+  after it is the interpreter's own teardown.  Shutdown touches only what was used:
+  `Speech.readers` builds Prism on being asked for, and building it to tell it to stop took 80 ms.  Control stops the speech wherever it
+  is pressed (`ScreenManager.handle_event`, user request), as it does in a screen reader; the key still
+  reaches the screen, since it is also the melee key and the menus' first-and-last modifier.  In the menus
+  every key cuts what SAPI 5 is saying (`Speech.interrupt_sapi`, user request): a key means the player has
+  moved on, and `stop` alone asks whoever speaks *now*, which is the wrong question while a line is in the
+  air - changing Speech output from SAPI 5 to Automatic left SAPI's line playing to the end, since by then
+  Automatic was NVDA and NVDA was saying nothing.  Not in a game, where a key is firing or turning and an
+  announcement is not what the player meant to stop.  NVDA's own
+  driver holds its first 50 ms of audio back before playing any (`_FIRST_AUDIO_CHUNK_MIN_DURATION_MS`), so
+  the first sound here - 30 ms after the key, 40 for a page of the encyclopedia - is the same trade made
+  the same way.  Stopping is then dropping what has not been played, which is instant (measured: a line
+  with 512,808 samples still to play is down to the 352 of its fade the moment the next line is asked for),
+  with 4 ms of ramp so the cut is not a click.  A `generation` counter carries the interruption to the
+  thread: a line whose generation has passed is dropped rather than spoken.  With the row off - or with no
+  engine to play through, or if a render fails - SAPI speaks to Windows as it always did, and that path
+  stops better too: `ISpeechAudio.SetState(STOP)` before the purge, which halves the tail (100 ms to 45).
+  NVDA solves the same problem the same way and calls it the same thing, so its players know the name; none
+  of its code is here (it is GPL), and the two are not alike inside - NVDA streams through an `ISpAudio`
+  object of its own into its WASAPI player, where this renders to memory through SAPI's documented stream
+  and plays it through the engine the game already has.
 * PORT ADDITION: what a controller makes you feel (`platform/haptics.py`).  The original never vibrates.
   The proximity heartbeat (`ADPlayer`, player.py) pulses the heavy motor on each beat, scaled as the sound
   is (closeness squared * 0.7 + 0.3).  The rest is felt where it happens to a zombie, so a bullet, a melee
@@ -600,7 +823,17 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   button turns at the keyboard's speed, being down or up with nothing in between, and goes through the
   same `GameplayScreen.press` the turn keys do; while one is held it decides, and the sticks have it back
   as soon as it is let go.  `_turn_keys` maps what is held - a key code, or a pad button's source - to the
-  action it pressed, so the last one pressed decides whichever it came from.
+  action it pressed, so the last one pressed decides whichever it came from.  A press the game takes is
+  finished in the game, whatever is on the screen by the time it is let go (`ScreenManager._pad_in_game`):
+  Cross is Enter on the way up, since held it is the menus' Control, and skipping the intro with it put a
+  menu there before the way up arrived - so one press skipped the intro and then pressed Play, starting a
+  game.  Under Gesture the D-pad's
+  other two directions switch weapon and reload (user request), beside the stick flicks that already did -
+  `PAD_DEFAULTS` gesture lists for `next_weapon` and `reload`.  Bindings that grow like that do not reach a
+  profile already written to keys.json, since a stored list replaces the default outright, so a stored list
+  that is still exactly what the default used to be is taken as untouched and given the new one
+  (`PAD_WAS`); a list the player has changed is left as they left it.  Button mode is not touched: there
+  the shoulder and the trigger do both, and the request was for Gesture.
 * A fresh profile plays in **Gesture** (user request).  `-[ADGameParameters lastButtonMode]` 0x1000a3aec
   answers `UIAccessibilityIsVoiceOverRunning()` when `buttonMode` is not stored, which in the port is
   always true and so put every new player in Button mode; `GameParameters.DEFAULT_BUTTON_MODE` is False
@@ -621,8 +854,14 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   NVDA, JAWS, ZDSR, Narrator, ZoomText, System Access, Window-Eyes, PC-Talker, Boy PC Reader, Sense Reader
   and SAPI 5 only (the Prism ones through `_Readers.current(only)`), with nothing spoken while that one
   cannot speak.  Automatic tries the Prism ones in that same order, not Prism's own (which puts PC-Talker,
-  ZDSR and Boy PC Reader before JAWS, and Narrator last).  Enter and Shift+Enter step through them and
-  wrap.  The row says each step through the new choice or, when that one cannot speak (`Speech.can_speak`),
+  ZDSR and Boy PC Reader before JAWS, and Narrator last).  Enter opens them as a list of their own
+  (`ControlSchemePanel.open_choices`, user request): the panel shows the choices instead of the category's
+  rows, the one in use is where the cursor lands and is read as selected, Enter takes the one under the
+  cursor and Escape or Back leaves the setting as it was - both close the list rather than the screen, the
+  way the armory's Escape closes an open weapon page.  They used to step one press at a time, which says
+  every choice on the way past: twelve here, and as many voices as the machine has on the voice row below -
+  two hundred and fifty on the machine this was written for.  The row says what was taken, through the new
+  choice or, when that one cannot speak (`Speech.can_speak`),
   through the automatic one with the reason ("JAWS is not running, so the game will be silent until it is",
   or that Prism is not installed): said through the choice itself, it would not be heard, and a player
   stepping through would not know where they had landed.  The game reads the choice as it starts
@@ -678,11 +917,69 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   the armory anyway in the tail call at 0x0761b8 - so one press closed the weapon page *and* threw you out
   of the armory, skipping the list.  Back now matches Escape (`accessibility_perform_escape`): it closes the
   detail and leaves the cursor on the row it was opened from, and a second press leaves the armory.
+* A power-up in hand is held while the game is paused (user request).  `pauseGame` 0x10005b5fc stops the
+  timers and pauses the bricks and the ambience, and says nothing about a power-up, as it says nothing about
+  the weapon (`Weapon.pause`, the same divergence).  The Minigun's fire loops, so it went on firing through
+  the pause menu and only stopped when the game came back and its time ran out.  `PowerUp.pause` holds
+  whatever the power-up is playing and `resume` lets go of exactly those, so a second pause cannot forget
+  what the first is holding.
+* Being killed by a Berserk counts (user request).  `-[ADEnemy update:]`'s case 3 posts `PLAYER_DIED` at
+  0x10005f16c and then attacks; case 8, the berserk charge, goes straight to `attack` at 0x10005f468 with no
+  notification.  `ADInGameStats` learns of a death only from that notification, so the Berserk - the one
+  enemy that kills from this state - was never credited with a casualty however many times it killed you,
+  and the run was not counted as a death either: `save_stats` asks `update_deaths` only when the flag the
+  same notification sets is on, so the Deaths total on the statistics screen missed it too.  Case 8 posts it
+  now, as case 3 does.  One post per death still: the enemy goes to state 4 in `attack`, and every other
+  enemy is stopped by `stop_all_enemies_after_player_death_by_enemy_with_name`.
+* The coins and the diamonds belong to Play (user request).  Each screen decides for itself in the original
+  (`setCurrenciesVisibility:` 0x10001d4b0 and `setDiamonsdsVisibility:` 0x10001d5c8 in its `viewDidLoad`),
+  and what falls out of that has no pattern: Settings shows them, the Play menu does not, the challenge list
+  does, the screen after a challenge does not.  They are shown from the Play menu until the player is back
+  at the main menu instead (`App.in_play`, set by `go_to_play_menu` and cleared by `go_to_main_menu`;
+  `StatusBar._wanted` has the last word, whatever a screen asks for), so every menu under Play has them -
+  a mode added later without being told to - and nothing else does.  A screen inside Play can keep them off
+  with `shows_currencies = False`: the Play menu itself does, being the choice between the modes rather than
+  one of them, and so does the pause screen, being a fight rather than a menu.
+* The power-up page reads like the weapon page (user request).  `ADArmoryPowerUpUpgraderViewController` is
+  added to the armory's own view and made modal (`addSubview:` 0x10003b68c, `setAccessibilityViewIsModal:1`
+  0x10003b6d8), and a modal view hides all of its siblings - the status bar among them - so the one page
+  in the game where coins are spent was the one page that would not say how many you have.  The weapon page
+  is added to its tab's view instead and keeps them.  This page now hides the tab underneath it
+  (`content_container.elements_hidden`, put back when it closes) rather than being modal, so the status bar
+  stays; its back button says what it closes, as the weapon page's "Close weapon description" does, in
+  place of the nib's bare "Back" (`voiceOverBack`, 0x10004d848), and sits below the status bar so both
+  pages read in the same order; and the title carries the level, as the weapon page's does, where
+  `loadInformation` 0x10004da74 has the name alone and nothing on the page said what you already had.
+* Closing a weapon page and equipping a weapon click (user request).  Only `ADButtonWithFont` plays a sound
+  (`playSound` 0x100073578), and the nib makes these three plain `UIButton`s - `#23` "Close weapon
+  description", `#7` and `#26` "Equip instead of" - so they were the last silent presses in the armory.
+  The power-up page's own button is an `ADButtonWithFont` (`#103`) and always clicked.
+* The power-up page's button says "Close powerup description" (user request), in the game's own spelling -
+  the armory tab is "Powerup" and the original's strings are POWERUP - rather than the hyphen this port
+  wrote first.  The nib's own title for it is "  BACK", with the accessibility label "Back"; the wording
+  follows the weapon page's "Close weapon description", which is the nib's.
+* Opening a weapon from the Loadout tab clicks (user request).  The shop's selection plays one
+  (`[self playSound]` at 0x100090a88) and so does the power-ups' (0x10003b53c), but the loadout's
+  (`-[Accessible_ADArmoryLoadoutViewController tableView:didSelectRowAtIndexPath:]` 0x10004a264) has none,
+  and its sighted twin has none either - `handleItemTap:` 0x10000adf4 goes straight to
+  `openDescriptionForItemWithName:`.  So the loadout was the one way into a weapon page that was silent.
 * The statistics screen speaks a weapon's exact accuracy (user request).  `configureWeaponCell:ForRow:`
   0x1000d0ff0 builds the label at 0x0d129c from everything before the first dot of the accuracy's string
   value, so 66.6 per cent is announced as 66; and a weapon that has never been fired has shotsHit /
   shotsFired = 0 / 0, which is nan, so its row is read out as "accuracy, nan percent".  The figure is spoken
   to one decimal instead, and a weapon with no shots says so.
+* PORT ADDITION: the launcher names a missing package rather than handing over a traceback
+  (`AudioDefence.py`, `PACKAGES`).  Somebody downloaded the repository's own zip - GitHub's Code, Download
+  ZIP, which unpacks as `AudioDefence-Windows-master` - believing it was the build, ran `AudioDefence.py`
+  with a bare Python and got `ModuleNotFoundError: No module named 'pygame'` in crash.txt.  A missing one of
+  ours now says which package it is and the line that installs them all, in the console, in crash.txt and
+  out loud; anything else still reports the traceback as before.
+* PORT ADDITION: a line built from parts is joined with a full stop, and not a second one where a part
+  already ends a sentence of its own - a stop, a mark, a colon (`screens.joined`, `ENDS_A_SENTENCE`).  An
+  alert is two of those in a row: "Not enough Coins!. You don't have enough Coins ... playing Endless
+  Mode.. OK" had one after the title's exclamation mark and another before the button's name.  The same
+  joining is used where a screen change names what was opened before the element it lands on
+  (`_apply_pending_focus`), which had the same fault in a row's list of choices.
 * PORT ADDITION: every screen names itself as you enter it - "Main Menu. Play, button".  These are the
   game's own names: each of these controllers sends `-[ADStatusBarViewController setPageTitle:]` in its
   `viewDidLoad` (ARMORY, PLAY, CHALLENGE, ZOMBIPEDIA, STATISTICS, INFO, GAME OVER, Credits, Dr Bastard's
@@ -797,8 +1094,13 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   "Enter" and "Numpad Enter" here, the arrows are "Left Arrow" and so on, and space is "Spacebar".
 * PORT ADDITION: the one defaults file is split three ways - `save.json` (progress: coins, diamonds,
   weapons, power-ups, missions, challenge data and the four stats blocks), `settings.json` (control scheme,
-  button mode, sensitivity, menu arrows, cursor memory, tutorial text, the update check, a skipped update and
-  the menu music volume) and `keys.json` (the key bindings, and the joystick later).  The game reaches all three through one `UserDefaults.standard()`, which routes each key by name.
+  button mode, sensitivity, menu arrows, cursor memory, tutorial text, the update check, a skipped update,
+  the menu music volume, the announcer and the game's own gain) and `keys.json` (the key bindings, and the
+  joystick later).  `announcer` and `masterGain` are the original's keys and went with the progress at
+  first, being neither named in `SETTINGS_KEYS` nor new; they are settings, so they were named on 2026-09-24
+  at the user's request.  A value already written to a player's `save.json` is left there and ignored, and
+  both start at their defaults once - the announcer on, the gain 1.0 - which is what the user asked for
+  rather than a migration.  The game reaches all three through one `UserDefaults.standard()`, which routes each key by name.
   the figure at 0x0d129c from everything before the first dot of the number's `stringValue`, so a weapon
   that has never been fired (`shotsHit` / `shotsFired` = 0 / 0, which is nan) is read out as
   "accuracy, nan percent", and a real figure is cut at the decimal point - 66.6 per cent announced as 66.

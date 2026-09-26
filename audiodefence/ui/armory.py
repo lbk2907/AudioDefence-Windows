@@ -22,11 +22,12 @@ from ..app import App
 from ..game import data
 from ..game.inventory import Inventory
 from ..game.weapon_manager import WeaponManager
-from ..platform.defaults import UserDefaults, ns_float_value, ns_int_value
+from ..platform.defaults import ns_float_value, ns_int_value
 from ..platform.runloop import RunLoop
 from ..platform.tracker import Tracker
 from ..s3d.engine import S3DEngine
-from .accessibility import Button, View, _is_inside, cross_axis_key, cross_axis_text, menu_tick
+from .accessibility import (Button, View, _is_inside, cross_axis_key, cross_axis_text, menu_tick,
+                            play_button_click)
 from .challenges import _TableLoader
 from .host import AlertScreen, register
 from .viewcontroller import ViewControllerScreen
@@ -72,17 +73,22 @@ class WeaponDescriptionView:
     def load_view(self, parent: View) -> None:
         v = self.view = View('', PAGE, accessible=False, parent=parent, name='#28')
         dx, dy = PAGE[0], PAGE[1]
+        # DIVERGENCE (user request): these three are plain UIButtons in the nib (#23, #7, #26), and only
+        # ADButtonWithFont plays a sound (playSound 0x100073578), so closing the page and equipping a weapon
+        # were the two things in the armory that made none.  They click like everything else now.
         Button('Close weapon description', _offset((0, 0, 203, 47), dx, dy), parent=v, font_button=False,
-               actions=[self.back_button_pressed], name='#23')
+               actions=[self.back_button_pressed, play_button_click], name='#23')
         self.weapon_name = View('', _offset((205, 0, 275, 47), dx, dy), parent=v, name='#65')
         self.weapon_description = View('', _offset((8, 55, 464, 47), dx, dy), parent=v, name='#78')
         self.weapon_stats = View('', _offset((8, 110, 464, 47), dx, dy), parent=v, name='#37')
         self.buy_or_upgrade_button = Button('Buy or upgrade', _offset((8, 186, 151, 42), dx, dy), parent=v,
                                             actions=[self.buy_or_upgrade_button_pressed], name='#54')
         self.equip1_button = Button('Equip instead of ', _offset((174, 186, 154, 42), dx, dy), parent=v,
-                                    font_button=False, actions=[self.equip_slot1_button_pressed], name='#7')
+                                    font_button=False, name='#7',
+                                    actions=[self.equip_slot1_button_pressed, play_button_click])
         self.equip2_button = Button('Equip instead of ', _offset((336, 186, 136, 42), dx, dy), parent=v,
-                                    font_button=False, actions=[self.equip_slot2_button_pressed], name='#26')
+                                    font_button=False, name='#26',
+                                    actions=[self.equip_slot2_button_pressed, play_button_click])
         self.equip3_button = View('', (0, 0, 0, 0), accessible=False, name='equip3Button (not connected)')
         self.view.modal = True                            # setAccessibilityViewIsModal:1 by the tab
         self.parent_table.elements_hidden = True          # [tableView setAccessibilityElementsHidden:YES]
@@ -249,14 +255,26 @@ class PowerUpUpgraderView:
 
     def load_view(self, parent: View) -> None:            # 0x10004d89c
         v = self.view = View('', (0, 0, 568, 320), accessible=False, parent=parent, name='#69')
-        self.voice_over_back = Button('Back', (0, 0, 150, 40), parent=v, actions=[self.back_button_pressed],
-                                      name='#103')
+        # DIVERGENCE (user request): the nib's button for this page is "Back" (`voiceOverBack`, given its
+        # action in viewDidLoad 0x10004d848), where the weapon page's says what it closes - "Close weapon
+        # description".  A page you reach from a list wants the same words for the way out of it.
+        # and it sits below the status bar, where the weapon page's does (its nib frames are offset by the
+        # page's origin), so both pages read the same way round: the bar first, then the way out, then the
+        # page itself.  In the nib this button is at the very top, level with the bar
+        self.voice_over_back = Button('Close powerup description', (0, 53.5, 150, 40), parent=v,
+                                      actions=[self.back_button_pressed], name='#103')
         self.power_up_title = View('', (95, 70, 380, 40), parent=v, name='#124')
         self.power_up_description = View('', (221, 120, 245, 129), parent=v, name='#9 UITextView')
         self.upgrade_button = Button('UPDATE', (100, 257, 194, 38), parent=v,
                                      actions=[self.upgrade_button_pressed], name='#46')
         self.badge_image = None                           # no badgeImage outlet in the iPhone nib
-        self.view.modal = True                            # setAccessibilityViewIsModal:1 (VoiceOver only)
+        # DIVERGENCE (user request): the original adds this page to the armory's own view and makes it
+        # modal (addSubview: 0x10003b68c, setAccessibilityViewIsModal:1 0x10003b6d8), and a modal view hides
+        # every one of its siblings - the status bar among them.  So the one page in the game where you
+        # decide what to spend coins on was the one page that would not tell you how many you have, while
+        # the weapon page, which is added to its tab's view instead, keeps them.  This page hides the
+        # tab underneath it instead of being modal, which leaves the status bar where it is.
+        self.armory.content_container.elements_hidden = True
 
     def view_did_load(self) -> None:                      # 0x10004d7a8
         self.load_information()
@@ -266,7 +284,10 @@ class PowerUpUpgraderView:
         inv = Inventory.shared()
         d = self.power_up_dictionary
         level = inv.level_for_power_up(d.get('name'))
-        _set_text(self.power_up_title, d.get('displayName') or '')
+        # DIVERGENCE (user request): the title says which level the power-up is on, as the weapon page's
+        # does ("Fire grenade : level 2").  The original's is the name alone (0x10004da74) and nothing else
+        # on the page says what you already have, so the price stood on its own.
+        _set_text(self.power_up_title, '%s : level %i' % (d.get('displayName') or '', level))
         _set_text(self.power_up_description, d.get('upgradeText') or '')
         b = self.upgrade_button
         if level >= 4:
@@ -320,6 +341,7 @@ class PowerUpUpgraderView:
     def remove(self) -> None:
         if self.view.parent is not None and self.view in self.view.parent.children:
             self.view.parent.children.remove(self.view)
+        self.armory.content_container.elements_hidden = False   # the tab underneath can be read again
         self.armory.detail_closed(self)
 
 
@@ -446,6 +468,12 @@ class LoadoutTab(_Tab):
         self.armory.post_screen_changed(self.table_view.children[0] if self.table_view.children else None)
 
     def did_select_index(self, index: int) -> None:       # tableView:didSelectRowAtIndexPath: 0x10004a264
+        # DIVERGENCE (user request): opening a weapon here made no sound.  The original's own selection
+        # (0x10004a264) has no [self playSound], where the shop's (0x100090a88) and the power-ups'
+        # (0x10003b53c) both have one, and its sighted twin is no different - handleItemTap: 0x10000adf4
+        # goes straight to openDescriptionForItemWithName:.  So the loadout was the odd one out in the
+        # original, and every other way into a weapon page clicks.
+        _play_click()
         weapon = WeaponManager.shared().get_all_weapons_array()[index]
         self.detail_view = WeaponDescriptionView(weapon, False, self.armory, self.table_view, self.view)
         self.armory.detail_opened(self.detail_view)
@@ -699,14 +727,14 @@ class ArmoryScreen(ViewControllerScreen):
         if detail is not None and hasattr(detail, 'back_button_pressed'):
             detail.back_button_pressed()
 
-    def accessibility_perform_escape(self) -> None:
+    def accessibility_perform_escape(self) -> bool:
         # DIVERGENCE: -[ADArmoryViewController backButtonPressed] 0x100076080 dismisses the armory even
         # when a detail view has taken the back button, so Escape inside a weapon or a power-up threw you
         # out of the armory altogether.  Escape closes the detail first, as its own Back button does.
         if self.detail_view is not None:
             self.close_detail_view()
-            return
-        super().accessibility_perform_escape()
+            return True
+        return super().accessibility_perform_escape()
 
     # --- alerts ----------------------------------------------------------------------------------
     def show_not_enough_money_alert(self, delegate=None) -> None:   # 0x1000768d4

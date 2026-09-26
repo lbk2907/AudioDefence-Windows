@@ -1,56 +1,79 @@
 unrelease:
-The game runs on the Mac too: AudioDefence.app, in its own zip on the same release, updating itself like the Windows build. It speaks through VoiceOver, or through the system voice when VoiceOver is off, and Settings -> Speech has the system voice's own voice, rate, pitch and volume. The README's "On the Mac" says how to open it the first time and how to let VoiceOver speak for it.
+The game runs on the Mac too, in its own build on the same release. It speaks through VoiceOver, or through the system voice when VoiceOver is off.
+SAPI 5 responds as quickly as a screen reader does: it starts sooner, stops the moment you interrupt it, and no longer holds the game up while it speaks. The Speech tab in Settings has a Use modern output row for it, on by default. Turning it on or off takes hold at once.
+Press Control to stop whatever is being read out, in the menus or in a game.
+On the Endless screen you can no longer leave while the cards are being dealt.
+Guns are heard the moment you press and the moment you let go, and tapping the trigger no longer cuts the gun's wind-down short.
+The Minigun power-up is heard for as long as it fires, and a power-up you are holding stops when you die or when you pause. It fired on through the pause menu until its time ran out.
+A gun that is still firing stops when you switch weapon or when you die.
+When you empty the clip, the gun stops before the Reload call-out and the call-out is always said. A gun with no empty click of its own answers with its own warning instead of saying nothing.
+A gun running low on ammo keeps warning you until you reload, instead of only while you hold the trigger down. Firing in short bursts, the warning was never heard at all.
+The game closes properly when SAPI 5 is what speaks.
+If the sound device the speech is using goes away while you play, the game carries on with another one.
+The Speech output row and the SAPI 5 voice row in the Speech tab open a list to choose from instead of stepping.
+Buttons that were silent now click: opening a weapon from the Loadout tab, closing a weapon page, equipping a weapon, and the OK on a message like Not enough Coins.
+In Gesture mode, D-pad up switches weapon and D-pad down reloads, beside the stick flicks that already did.
+A power-up's page shows your coins and diamonds, says which level you are on, and its back button says what it closes.
+Your coins and diamonds are shown in the menus under Play, whichever mode you are in, and nowhere else.
+The Announcer switch and the game's volume are kept with your other settings now, not with your progress. Both start at their default once, and everything else is as you left it.
+Being killed by a Berserk counts. Its own tally stayed at zero however many times it got you, and your Deaths total missed those too.
+Skipping the intro with Cross no longer presses Play as well, which started a game you did not ask for.
+An alert no longer reads a stop that is already there - "Not enough Coins!. ... Endless Mode.. OK" is now read as it is written.
+Running the source without its packages now says which one is missing and how to install it, instead of handing you a traceback.
+Going back with Escape, or with Circle on a controller, clicks the same as pressing the Back button.
+A Berserk charging at you keeps making its sound after you shoot it. The first hit silenced it, and it ran you down with nothing to hear.
+Switching weapon while you reload stops the reload sound. It carried on playing on the gun you had put away, where nothing could stop it.
 
 26.09.22-2:
-You can turn with buttons on a game controller instead of a stick: the D-pad, left and right, to begin with. Settings, Joystick has them as Alternate turn left and Alternate turn right, and you can set them to any buttons you like. They turn at the same speed as the keyboard, and the sticks keep turning as they always did. When the tutorial names your controller, the aiming line names them too, by whatever you have set them to.
-A new profile starts in Gesture mode instead of Button mode. If you have played before, the mode you are in is the one you had.
-Melee weapons sound as they did before again. The swing and the hit both come from where you are, the way the original game has it, after the last version moved the hit out to the zombie you were hitting.
-The menus are felt on a game controller: a click for each row or tab you land on, a firmer one when you press a button or change a setting, and two knocks for a screen - low to high going in, high to low coming back out. Joystick vibration scales them, and Off silences them.
-The three vibration strengths feel further apart, and all of them are a little stronger. Medium and Strong used to be hard to tell apart.
-Shooting a diamond and shooting a power-up container each have a feel of their own instead of a zombie's, and the power-up is felt again when it takes effect after the announcement. That one starts with the power-up's own sound, the deploy after the announcement, and lasts as long as it does - the Tesla coil going up, the Minigun spinning up - up to three seconds.
-The Minigun is felt the whole time it fires, and a zombie it hits is felt over it instead of cutting it short. The Tesla coil has a crack of its own when it takes a zombie.
+You can turn with buttons on a game controller instead of a stick: the D-pad to begin with, and Settings, Joystick can move them.
+A new profile starts in Gesture mode instead of Button mode. If you have played before, yours is as you left it.
+Melee weapons sound as they did before again: the swing and the hit both come from where you are.
+The menus are felt on a game controller: rows, buttons, settings and screen changes each have their own feel, scaled by Joystick vibration.
+The three vibration strengths feel further apart, and all of them are a little stronger.
+Shooting a diamond and shooting a power-up container each have a feel of their own, and a power-up is felt again when it takes effect.
+The Minigun is felt the whole time it fires, and the Tesla coil has a crack of its own when it takes a zombie.
 Some typing mistakes in the game's own writing are corrected.
-The Miscellaneous tab has a Fine haptics option, on by default. With it on, a DualSense plugged in by USB plays what you feel in its grips; turn it off and it shakes its motors like any other controller. With no such controller connected the motors are used either way.
-An explosion is felt on the controller from further away. It used to fade to almost nothing across the arena.
-On the screen after a challenge you completed, the Retry button is read first, before Challenge selection and Next challenge, the way Try again comes first after a challenge you lost.
-In Gesture mode, the tutorial line for the melee weapon says you can shake the controller as well, when the controller you have can be shaken.
+The Miscellaneous tab has a Fine haptics option, on by default: a DualSense plugged in by USB plays what you feel in its grips.
+An explosion is felt on the controller from further away.
+On the screen after a challenge you completed, the Retry button is read first.
+In Gesture mode, the tutorial says you can shake the controller for melee, when yours can be shaken.
 
 26.09.22-1:
-The game checks for updates by itself and tells you when one is out. An update downloads only the files that changed, so a small fix is a small download, and your progress, settings and keys are untouched.
-The main menu has a Check for updates button, between Settings and Quit, for when you want to ask it yourself. It also tells you which version you are on. Run from source, it says updating is not available there instead, because a copy from GitHub updates with git.
-When an update is offered, No now only means not now, and the game asks again the next time it starts. To stop being asked about that version, there is a new Skip this version button. A newer version is still offered, and Check for updates on the main menu still finds a skipped one.
-The game keeps its version number inside itself now, not in a VERSION file beside it, so editing or deleting that file can no longer stop it from updating. A VERSION file left from an older version is not used any more.
-The pause menu has a Restart challenge button, between Resume and End Game. A challenge you have already lost no longer has to be played to the end. Endless games do not have it.
-The screen at the end of a run has a Copy results button, after an endless game and after a challenge you won or lost. It puts a short list of your results on the clipboard so you can paste them to somebody, and it comes before the other buttons.
-Those screens read one result per line, the same as the copy. After Endless the first line is your tarot cards, and after a challenge it is the challenge name and whether you completed or failed it. The screen after a failed challenge reads out your kills, accuracy and time, which it never used to say.
-The Play again button after an Endless game is called Close. It still takes you back to the Endless screen.
-On the Endless screen, the Play button is dimmed along with the Armory and Back buttons while the cards are dealt, and all three are ready once the cards are down.
-Changing a tarot card reads the new card out. Before, it changed in silence and you had to arrow off it and back to hear what you had.
-On the tarot card screen, a card now tells you the right number of diamonds you have. After spending diamonds in the armory, it used to still say the old number.
-In Info, the Statistics screen now counts the coins and diamonds you earn. Money earned and Diamonds collected always said 0 before.
-After upgrading a power-up, the Upgrade button shows the new price at once. It used to offer the old one for about a second.
-Melee is on both Control keys now by default, left and right, so whichever hand is free can reach it.
-When a melee weapon connects, you hear the swing where you are and the hit out at the zombie you hit, instead of both in front of you. A swing that hits nothing is just the swing, from you.
-Two zombies of the same kind no longer cut off each other's sound. One of them could go quiet and keep walking towards you.
-The Shield zombie, and a few others, no longer die in silence when the killing hit is critical, which happened often with melee. Their hit sound was cut off and no death sound played.
-When two zombies die close together at the end of a wave, the second one's death sound is no longer cut off.
-After a revive, being killed by the same kind of zombie again plays its attack sound. It used to be silent, every time with the Shield zombie.
-Page Up and Page Down set the volume of the menu music, on any menu. It goes from 100%, as loud as the music has always been, down to silent, and does nothing in a game.
-The Menus tab in Settings is called Miscellaneous now and comes last. It has the menu layout, remember cursor position, tutorial text, which has moved there from the Sound tab, the joystick vibration and the trigger feel, the names in hints and tutorial, and the switch for checking for updates when the game starts.
-The Miscellaneous tab has a Reset all settings button. It sets everything back to default, except your keys and your controller buttons.
-You can play with a game controller, like a DualSense, DualShock, Xbox or Switch Pro controller. Either stick turns, slowly with a small push and fast when pushed all the way. R2 fires, R1 is melee, L1 switches weapon and L2 reloads, or in Gesture mode, flick a stick up or down. Options pauses.
-A controller works in the menus too: the D-pad or a stick moves, Cross selects, Circle goes back, and L2 and R2 set the menu music volume.
-Shaking the controller swings your melee weapon in Gesture mode, like shaking the phone did.
-Settings has a Joystick tab. It names the controller you have connected and lets you change which button does what. Each kind of controller keeps its own buttons, and with more than one connected, the Controller row chooses which one you are setting. Connecting or unplugging a controller while the game is open updates the tab at once.
-Joystick vibration and the trigger feel are in the Miscellaneous tab, with four settings each: Off, Light, Medium and Strong. Enter goes to the next and Shift+Enter to the previous. The trigger feel is only for a DualSense controller, and the option says so. Stepping it puts that feel on the triggers for a few seconds, so you can squeeze R2 and try it without starting a game.
-A controller vibrates with the heartbeat when a zombie is close, harder the closer it is, and as hard as a hit hurts, so a big gun is felt more than a small one. It vibrates when a shot hits the Shield zombie's shield, when a zombie dies, for an explosion, harder the closer it is, when the tornado pushes zombies back, and when a zombie kills you.
-On a DualSense, R2 is shaped like a pistol's trigger while you play: a long soft part with nothing in it, then a wall that holds, and pressing through the wall is what fires the shot. Letting the trigger back out to just under the wall is enough to fire again. In Button mode, L2 has a light pull for reloading.
-A DualSense plugged in by USB plays the heartbeat you hear in its grips, using the fine haptics PlayStation games use instead of plain rumble.
-The Miscellaneous tab has a Names in hints and tutorial option. Set it to Controller buttons and the hints and the tutorial text name the buttons of the controller you have connected instead of the keys.
-Playing with the SAPI 5 voice instead of NVDA works like playing with NVDA. Before, the challenge screens said they were not ported yet, and the game itself was not described.
-The game speaks through JAWS, ZDSR, Narrator, ZoomText, System Access and other screen readers too, not only NVDA. Before, it used the SAPI 5 voice with them. A screen reader started or closed while the game is open is followed within a few seconds.
-Settings has a Speech tab. Speech output chooses who speaks: Automatic, the default, takes whichever screen reader is running, trying NVDA, JAWS, ZDSR, Narrator and then the others, or SAPI 5 when none is. Pick one instead and only that one speaks, so the game is silent while it is not running. Enter and Shift+Enter go through the list, and the option always tells you what you picked.
-While SAPI 5 is what speaks, the Speech tab also has the SAPI 5 voice, rate, pitch and volume, and a rate boost for voices that can go faster. The voice starts on the one set in Control Panel, each change is said in SAPI 5 so you can hear it, and the rows come and go as a screen reader starts or closes.
+The game checks for updates by itself and downloads only the files that changed. Your progress, settings and keys are untouched.
+The main menu has a Check for updates button, which also tells you which version you are on.
+No to an update means not now; a new Skip this version button stops that one being offered.
+The game keeps its version number inside itself, so a missing VERSION file can no longer stop it updating.
+The pause menu has a Restart challenge button.
+The screen at the end of a run has a Copy results button, which puts your results on the clipboard.
+Those screens read one result per line, and after a failed challenge they read your kills, accuracy and time.
+The Play again button after an Endless game is called Close.
+On the Endless screen, Play, Armory and Back are dimmed while the cards are dealt.
+Changing a tarot card reads the new card out.
+A tarot card says how many diamonds you really have, after spending some in the armory.
+In Info, the Statistics screen counts the coins and diamonds you earn. Both always said 0 before.
+After upgrading a power-up, the Upgrade button shows the new price at once.
+Melee is on both Control keys by default, so whichever hand is free can reach it.
+When a melee weapon connects, the swing comes from you and the hit from the zombie you hit.
+Two zombies of the same kind no longer cut off each other's sound.
+The Shield zombie, and a few others, no longer die in silence when the killing hit is critical.
+When two zombies die close together, the second one's death sound is no longer cut off.
+After a revive, being killed by the same kind of zombie plays its attack sound again.
+Page Up and Page Down set the menu music volume, on any menu.
+The Menus tab in Settings is called Miscellaneous, comes last, and holds the tutorial text setting as well.
+The Miscellaneous tab has a Reset all settings button, which leaves your keys and controller buttons alone.
+You can play with a game controller - DualSense, DualShock, Xbox or Switch Pro. The sticks turn, R2 fires, R1 is melee, L1 switches weapon, L2 reloads, Options pauses.
+A controller works in the menus too, and its triggers set the menu music volume.
+Shaking the controller swings your melee weapon in Gesture mode, as shaking the phone did.
+Settings has a Joystick tab for changing which button does what. Each kind of controller keeps its own.
+Joystick vibration and the trigger feel have four settings each, from Off to Strong. Stepping the trigger feel puts it on the triggers to try.
+A controller vibrates with the heartbeat, hits, kills, explosions, the tornado and your death.
+On a DualSense, R2 is shaped like a pistol's trigger while you play, and L2 has a light pull for reloading in Button mode.
+A DualSense plugged in by USB plays the heartbeat in its grips, in fine haptics rather than plain rumble.
+The Miscellaneous tab can name your controller's buttons in the hints and the tutorial instead of the keys.
+Playing with the SAPI 5 voice now works the way playing with NVDA does.
+Other screen readers speak the game too, through Prism: JAWS, ZDSR, Narrator, ZoomText, System Access and the rest. One started or closed while you play is followed.
+Settings has a Speech tab, where Speech output chooses who speaks: whichever screen reader is running, or one of them only.
+While SAPI 5 is what speaks, the Speech tab also has its voice, rate, pitch, volume and a rate boost.
 
 26.09.20-1:
 Initial release.

@@ -198,7 +198,7 @@ Settings, saves and the log live in `%APPDATA%\AudioDefence` (on the Mac,
 | file | what is in it |
 |---|---|
 | `save.json` | progress: coins, diamonds, weapons, power-ups, missions, challenges, statistics |
-| `settings.json` | control scheme, button mode, turn sensitivity, menu arrows, cursor memory, tutorial text, menu music volume, the update check and a version you skipped, how strong the vibration and the trigger feel are, and whether hints name keys or controller buttons, and which controller's, and the speech output and SAPI 5's voice, rate, rate boost, pitch and volume |
+| `settings.json` | control scheme, button mode, turn sensitivity, menu arrows, cursor memory, tutorial text, the announcer, the game volume, menu music volume, the update check and a version you skipped, how strong the vibration and the trigger feel are, and whether hints name keys or controller buttons, and which controller's, and the speech output and SAPI 5's voice, rate, rate boost, pitch and volume |
 | `keys.json` | the key bindings, and each kind of controller's, by its name |
 
 Deleting the folder starts a fresh profile — the first run then begins on Gyro
@@ -398,8 +398,8 @@ In a game:
 | D-pad left / right | turn, at the same speed as the arrow keys (Alternate turn left / right — the only turning you can rebind) |
 | R2 | fire |
 | R1 | melee |
-| L1, or a stick flicked up under Gesture | next weapon |
-| L2, or a stick flicked down under Gesture | reload |
+| L1, or a stick flicked up or D-pad up under Gesture | next weapon |
+| L2, or a stick flicked down or D-pad down under Gesture | reload |
 | Options | pause, and Options again to resume |
 | Cross (A) | skip the narration |
 | Square | read the challenge timer |
@@ -589,10 +589,13 @@ already had.
 
 The port is written method by method against the original's arm64 disassembly, and the rule it follows is to
 copy what the game does rather than what it ought to do — its bugs included. Every place it departs from
-that is listed below, and `docs/PORTING_NOTES.md` carries the same list with the address of the method each
-one came from, so any of them can be checked against the binary or put back.
+that is written down in `docs/PORTING_NOTES.md`, with the address of the method it came from, so any of them
+can be checked against the binary or put back. Listed below are the ones you would notice while playing; the
+rest are internal — analytics that only log locally, a sanity check that only printed, an undefined return
+value nothing reads.
 
-There are **107 divergences** and **15 original quirks kept on purpose**.
+There are **126 divergences** and **15 original quirks kept on purpose** in the notes, of which 73 are
+listed here.
 
 ### 1. Windows standing in for a phone
 
@@ -653,6 +656,21 @@ nothing, or says something no keyboard player can act on.
   weapon as "costs : 0 coins".
 - **The armory's Back button takes one step**, closing the weapon page and leaving you on the row you opened,
   instead of closing the page and the armory together.
+- **Opening a weapon from the Loadout tab clicks**, the way opening one in the Weapons tab, or a power-up,
+  already did. The loadout was the one way into a weapon page the original left silent.
+- **Closing a weapon page and equipping a weapon click too.** Those three buttons are plain ones in the
+  original, and only its font buttons make a sound.
+- **A power-up stops while the game is paused.** The Minigun kept firing through the pause menu, because
+  the original's pause says nothing about a power-up in hand.
+- **Being killed by a Berserk counts.** The enemy kills you from a state the original never reports a death
+  from, so its own "killed you" tally stayed at zero however often it got you, and the Deaths total on the
+  statistics screen missed those deaths as well.
+- **The coins and the diamonds are shown in the menus under Play and nowhere else**, whichever mode you are
+  in and whatever is added later. In the original each screen decides, with no pattern to it: Settings shows
+  them, the challenge list does, the screen after a challenge does not.
+- **A power-up's page reads like a weapon's**: the coins and diamonds can be read while you are deciding
+  what to spend them on, its back button says what it closes, and the title says which level you are on.
+  The original's page hides the whole screen behind it, bare name and price only.
 - Zombiepedia's preview button, its Next and Previous buttons, and the armory's upgrade button were
   unlabelled, double-labelled or silent about their price. Four strings written in capitals are spoken in
   sentence case; the screen keeps the capitals.
@@ -764,11 +782,14 @@ replacing them.
 
 ### Original quirks kept on purpose
 
-Fourteen remain. Each is a design decision rather than a fault, a change that would alter how the game plays
+Fifteen remain. Each is a design decision rather than a fault, a change that would alter how the game plays
 or sounds rather than what it tells you, or something with no observable effect at all.
 
 The ones you can notice:
 
+- **Melee cancels a reload.** Swinging mid-reload interrupts it and swings anyway, where firing mid-reload
+  waits. Kept: swinging the machete while reloading is something the game lets you do, and losing the reload
+  is what it costs.
 - **Endless makes you earn an enemy; challenges hand it to you.** Five enemies carry a kill requirement —
   the Whisperer 150, the Berserk 250, the Riot Gear Zombie 350, the Zombie Dog 400, the Colossus 450 —
   counted against your total kills, of anything, across the whole save. Endless checks it and throws away

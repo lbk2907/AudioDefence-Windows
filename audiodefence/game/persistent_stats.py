@@ -216,7 +216,7 @@ class PersistentStats:
         t['Total number of missions completed'] = ns_int_value(t.get('Total number of missions completed')) + n
         self._save_totals(t)
 
-    def update_missions_skipped(self, n: int) -> None:
+    def update_missions_skipped(self, n: int) -> None:   # 0x100087d7c
         t = dict(self.total_stat_data())
         t['Total number of missions skipped'] = ns_int_value(t.get('Total number of missions skipped')) + n
         self._save_totals(t)

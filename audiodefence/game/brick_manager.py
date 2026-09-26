@@ -5,7 +5,7 @@ import logging
 import math
 
 from ..platform import crand
-from ..platform.defaults import ns_float_value, ns_int_value
+from ..platform.defaults import ns_float_value
 from ..s3d.engine import S3DEngine
 from . import data
 from .ingame_stats import InGameStats, notify_stats
@@ -251,7 +251,7 @@ class BrickManager:
     def number_of_active_objects_on_scene(self) -> int:         # 0x1000c35e4
         return sum(1 for t in self.all_potential_targets() if t.can_be_shot_at())
 
-    def enemies_from_current_brick(self) -> list:
+    def enemies_from_current_brick(self) -> list:          # 0x1000c3734
         b = self.current_brick()
         return b.enemies if b is not None else []
 
@@ -512,6 +512,11 @@ class BrickManager:
             d.stop_after_player_was_killed()
         for p in list(self.passer_by_manager.all_passer_by()):
             p.stop_after_player_was_killed()
+        from .weapon_manager import WeaponManager                # PORT ADDITION: and the gun and the
+        WeaponManager.shared().stop_firing_after_player_was_killed()   # power-up in hand
+        power_up = WeaponManager.shared().power_up
+        if power_up is not None:
+            power_up.stop_after_player_was_killed()
 
     def show_revive_view(self) -> None:                         # 0x1000c74fc
         if self.gameplay_view_controller is not None:

@@ -253,9 +253,6 @@ class GameParameters:
         self.defaults.set_object(level, 'triggerEffects')
         self.defaults.synchronize()
 
-    def trigger_effects(self) -> bool:
-        return self.trigger_level() != 'off'
-
     #: PORT ADDITION: whether the hints, the tutorial text and the other lines that name a key name the
     #: keyboard's keys or the connected controller's buttons (platform/pad.menu_words,
     #: game/tutorial_text.py).  With no controller connected - at startup, or when the last one goes - it
@@ -296,6 +293,19 @@ class GameParameters:
 
     def set_language(self, value: str) -> None:
         self.defaults.set_object(value, 'language')
+
+    #: PORT ADDITION: Settings -> Speech -> Use modern output: whether the game plays what SAPI 5 says
+    #: through its own sound (platform/speech_audio.py), where a line stops the instant it is interrupted,
+    #: or hands it to Windows as it always did, where what is already buffered plays on.  On by default, and
+    #: the name is NVDA's, whose players know it from their own settings.
+    DEFAULT_MODERN_AUDIO = True
+
+    def modern_audio(self) -> bool:
+        value = self.defaults.object('sapiModernAudio')
+        return self.DEFAULT_MODERN_AUDIO if value is None else self.defaults.bool('sapiModernAudio')
+
+    def set_modern_audio(self, value: bool) -> None:
+        self.defaults.set_bool(bool(value), 'sapiModernAudio')
         self.defaults.synchronize()
 
     #: PORT ADDITION: Settings -> Miscellaneous -> Speech output: Automatic, or one screen reader or voice

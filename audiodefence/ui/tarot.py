@@ -262,6 +262,7 @@ class TarotScreen(ViewControllerScreen):
     def __init__(self, host):
         super().__init__(host)
         self.backbuttonpressed = False
+        self.dealing = False                              # PORT ADDITION: the cards are being dealt
         self.tarot_playlist = None
         self.tarot_cards: list[TarotCardViewController] = []
         self.cards_to_load = 0
@@ -320,6 +321,7 @@ class TarotScreen(ViewControllerScreen):
         else:
             self.play_button.user_interaction_enabled = False
         sb.deactivate_buttons()
+        self.dealing = True
         self.cards_to_load = 2
         n = 0
         while True:
@@ -330,6 +332,7 @@ class TarotScreen(ViewControllerScreen):
         RunLoop.main().call_later(2.3, self._cards_dealt)
 
     def _cards_dealt(self) -> None:                       # viewDidLoad_block_invoke 0x100034e84
+        self.dealing = False
         if self.backbuttonpressed:
             return
         sb = self.status_bar_view_controller
@@ -400,7 +403,22 @@ class TarotScreen(ViewControllerScreen):
     def record_card_reload_with_number(self, number: int) -> None:   # 0x100036220: analytics only
         pass
 
+    #: PORT DIVERGENCE: Escape - and Circle on a controller, which stands for it - does nothing while the
+    #: cards are being dealt (user request).  The Back button is dimmed for those two seconds
+    #: (`deactivate_buttons`) and so is Play, but `accessibilityPerformEscape` 0x1000728e4 goes straight to
+    #: `backButtonPressed` without asking whether the button it stands for can be pressed, so the original
+    #: leaves the screen mid-deal and the port did too.  It said "The cards are still being dealt" at first
+    #: and that was taken off again (user request): the deal is two seconds, the cards speak for themselves
+    #: at the end of it, and a sentence in the way of them is one more thing to sit through.
+
+    def accessibility_perform_escape(self) -> bool:
+        if self.dealing:
+            return False                                  # nothing happened, so nothing is heard
+        return super().accessibility_perform_escape()
+
     def back_button_pressed(self) -> None:                # 0x1000364e8
+        if self.dealing:                                  # the button itself is dimmed; this is the rest
+            return
         self.backbuttonpressed = True
         App.delegate().go_to_play_menu()
 

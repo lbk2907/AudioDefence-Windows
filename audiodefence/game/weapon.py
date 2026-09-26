@@ -37,6 +37,32 @@ def _c_div(a: int, b: int) -> int:
     return q if (a >= 0) == (b >= 0) else -q
 
 
+#: PORT DIVERGENCE: a weapon's sounds start where the sound does (user request).  Some of the game's own
+#: recordings open with a moment of nothing - the Machine Gun's shot has 133 milliseconds of it, its tail
+#: 133 and its deploy 145, the Grenade Launcher's shot 109, the Tactical Rifle's deploy 104 - and the
+#: original plays them from the top, so the press and the sound are that far apart.  Tapping the Machine
+#: Gun, which is what it is for, that silence is the gap between the shots; letting go of it after a burst,
+#: it is the gap before the gun winds down.  The files are left alone: each sound is started past its own
+#: silence instead (S3DSound.skip_to), measured once from what the decoder already holds
+#: (decoder.lead_in), and only up to a quarter of a second, in case the quiet is the sound itself.
+_LEAD_IN: dict = {}
+
+
+def _at_the_sound(sound):
+    """Have this sound start where the recording does, not where the file does; returns it, to wrap the
+    place it is taken from the playlist."""
+    if sound is None or not sound.path:
+        return sound
+    lead = _LEAD_IN.get(sound.path)
+    if lead is None:
+        from ..s3d import decoder
+        if not decoder.is_cached(sound.path):             # not decoded yet: ask again next time, rather
+            return sound                                  # than remember that it has no silence in it
+        lead = _LEAD_IN[sound.path] = decoder.lead_in(sound.path)
+    sound.skip_to = lead
+    return sound
+
+
 class Weapon:
     # -[ADWeapon initWithDictionary:] 0x100013f94
     def __init__(self, d: dict | None):
@@ -47,6 +73,7 @@ class Weapon:
         self.fire_rate_timer = 0.0
         self.continuous_sound = None
         self.continuous_warning = None
+        self.empty_loop = None                            # PORT ADDITION: the warning an empty gun makes
         self.reload_sound = None                          # PORT ADDITION: the one reload actually started
         self.last_announcer_speech = 0.0
         self.previous_tick_time = 0.0
@@ -161,10 +188,12 @@ class Weapon:
         now = ca_current_media_time()
         previous = self.previous_tick_time
         self.previous_tick_time = ca_current_media_time()
+        self.update_low_ammo_warning()                    # PORT ADDITION: it lives with the clip now
         st = self._state
         if st == 0:
             if self.continuous_sound is not None and self.continuous_sound.playing:
                 self.continuous_sound.stop()
+            self.stop_empty_loop()                        # PORT ADDITION: nothing is left sounding at rest
         elif st == 1:
             if self.time_in_state > self.switching_time:
                 self.set_state(0)
@@ -175,11 +204,15 @@ class Weapon:
             if self.fire_rate_timer > self.fire_rate:
                 self.fire_rate_timer = 0.0
                 if not self.resolve_shoot():
-                    self.play_click_sound()
+                    # DIVERGENCE: 0x100014c8c plays the click first and stops the gun after it, so the
+                    # "Reload" call-out starts underneath the gun still firing and its first word is lost.
+                    # The gun stops first here.  And the call-out is not held back for the shot that runs
+                    # the clip out (`announce=True`): the five-second gate is right for the clicks that
+                    # follow, and wrong for the one moment the player needs to be told (user request).
                     if self.continuous_sound is not None:
                         self.continuous_sound.stop()
-                    if self.continuous_warning is not None:
-                        self.continuous_warning.stop()
+                    self.stop_low_ammo_warning()
+                    self.play_click_sound(announce=True)
                     self.set_state(5)
             self.fire_rate_timer = self.fire_rate_timer + dt
             self.time_in_continous = self.time_in_state
@@ -187,12 +220,12 @@ class Weapon:
             if self.time_in_state + self.time_in_continous > 0.2:
                 if self.continuous_sound is not None:
                     self.continuous_sound.stop()
-                if self.continuous_warning is not None:
-                    self.continuous_warning.stop()
                 self.change_state(0)
                 self.play_continuous_tail()
         elif st == 5:
-            if self.time_in_state > self.fire_rate:
+            if self.start_empty_loop():                   # PORT ADDITION: held, it warns until it is let go
+                pass
+            elif self.time_in_state > self.fire_rate:
                 self.time_in_state = 0.0
                 self.play_click_sound()
         elif st == 6:
@@ -234,33 +267,98 @@ class Weapon:
             return
         self.change_state(3)
         pl = self.playlist
-        self.continuous_sound = pl.any_sound_with_prefix(f'weapon_gun_{self.name}_conti') if pl else None
+        self.continuous_sound = _at_the_sound(pl.any_sound_with_prefix(f'weapon_gun_{self.name}_conti')) \
+            if pl else None
         if self.continuous_sound is not None:
             self.continuous_sound.set_spatialized(False)
             self.continuous_sound.set_gain(0.6)
             self.continuous_sound.play(True)
-        self.continuous_warning = pl.any_sound_with_prefix(f'weapon_gun_{self.name}_warningloop') if pl else None
-        if self.continuous_warning is not None:
-            self.continuous_warning.set_spatialized(False)
-            self.continuous_warning.set_gain(0.0)
-            self.continuous_warning.play(True)
+        self.update_low_ammo_warning()                    # due from this shot, if the clip is low enough
 
     def continuous_stop(self) -> None:                    # 0x1000157f8
+        self.stop_empty_loop()                            # PORT ADDITION: let go, and the warning stops
         if self.continuous_sound is not None:
             self.continuous_sound.stop()
-        if self.continuous_warning is not None:
-            self.continuous_warning.stop()
         if self._state == 3:
             self.change_state(4)
         elif self._state == 5:
             self.change_state(0)
 
+    def stop_firing_now(self) -> None:
+        """PORT ADDITION: stop this weapon where it stands - the loop, the warning loop, the state.
+
+        `continuous_stop` hands state 3 over to state 4, which stops the sound and plays the tail on the
+        next `update:`.  That is right while the weapon is in hand, and wrong the moment it is not: only
+        the current weapon is updated (`ADWeaponManager update:`), so a gun switched away from mid-burst
+        was left in state 3 with its "_conti" loop playing and nobody to stop it - and since the gun the
+        player then held had never been started, it never ran dry, so no reload was called out either.
+        The same holds when the player dies with the trigger down.
+        """
+        self.stop_empty_loop()
+        if self.continuous_sound is not None:
+            self.continuous_sound.stop()
+        self.stop_low_ammo_warning()
+        if self._state in (3, 4, 5):
+            self.play_continuous_tail()                   # the gun spins down, as it would have
+        self.set_state(0)
+        self.fire_rate_timer = 0.0
+        self.time_in_continous = 0.0
+
     def play_continuous_tail(self) -> None:               # 0x1000158b0
-        tail = self.playlist.any_sound_with_prefix(f'weapon_gun_{self.name}_tail') if self.playlist else None
-        if tail is not None:
-            tail.set_spatialized(False)
-            tail.set_gain(0.6)
-            tail.play(False)
+        tail = _at_the_sound(
+            self.playlist.any_sound_with_prefix(f'weapon_gun_{self.name}_tail')) if self.playlist else None
+        if tail is None:
+            return
+        # DIVERGENCE: a weapon has one sound per file, so playing the tail again while the last one is still
+        # sounding restarts it (S3DSound.play: active -> stop, then _restart_play).  The Machine Gun's tail
+        # runs 1.8 seconds and a burst can be a tenth of that, so tapping the trigger cut the wind-down off
+        # and started it again, over and over.  The second one gets a voice of its own instead, the way an
+        # overlapping shot does (S3DEngine.play_copy_of, -[ADWeapon playSingleShootSound]).
+        if tail.playing and S3DEngine.engine().play_copy_of(tail):
+            return
+        tail.set_spatialized(False)
+        tail.set_gain(0.6)
+        tail.play(False)
+
+    def running_low(self) -> bool:
+        """Whether the clip is down to its last fifth, which is what the warning loop answers to
+        (`-[ADWeapon resolveShoot]` 0x100015a1c)."""
+        return float(self.bullets_in_clip) <= float(self.capacity) * 0.2
+
+    def update_low_ammo_warning(self) -> None:
+        """DIVERGENCE: the low-ammo loop sounds for as long as the clip is low (user request).
+
+        `continuousStart` 0x1000154a4 starts it with the burst and `continuousStop` 0x1000157f8 stops it
+        with the burst, so it is only ever heard *underneath* the gun - and over a burst it is 12 dB
+        quieter than the gun's own "_conti" loop, which is playing at the same instant.  Held down that
+        still works, because the beeps keep coming and the ear picks the rhythm out; fired in taps it is
+        one beep under one shot, and it is not heard at all.
+
+        It lives with the clip instead: it starts when the clip is down to its last fifth and keeps beeping
+        between bursts, where nothing is over it, until the gun is reloaded, run dry, put away, or the
+        player dies.
+        """
+        wanted = (self.continuous_fire and self.playlist is not None
+                  and self._state not in (1, 6, 7, 8)   # switching, or somewhere in a reload
+                  and self.bullets_in_clip > 0 and self.running_low())
+        if not wanted:
+            self.stop_low_ammo_warning()
+            return
+        if self.continuous_warning is not None:
+            return
+        self.continuous_warning = _at_the_sound(
+            self.playlist.any_sound_with_prefix(f'weapon_gun_{self.name}_warningloop'))
+        if self.continuous_warning is None:
+            return
+        self.continuous_warning.set_spatialized(False)
+        self.continuous_warning.set_gain(0.6)
+        self.continuous_warning.play(True)
+
+    def stop_low_ammo_warning(self) -> None:
+        """Let the loop go and forget it; `update_low_ammo_warning` starts a new one when one is due."""
+        if self.continuous_warning is not None:
+            self.continuous_warning.stop()
+            self.continuous_warning = None
 
     def resolve_shoot(self) -> bool:                      # 0x100015a1c
         if self.bullets_in_clip < 1 or self.bullets_total < 1:
@@ -271,11 +369,8 @@ class Weapon:
         if GameModifiers.shared().rustyWeapons:
             if crand.c_mod(crand.rand(), 100) == 1:
                 self.bullets_in_clip = 0
-        low = float(self.bullets_in_clip) <= float(self.capacity) * 0.2
         if self.continuous_sound is not None:
             self.continuous_sound.set_gain(0.6)
-        if self.continuous_warning is not None:
-            self.continuous_warning.set_gain(0.6 if low else 0.0)
         if self.weapon_manager is not None:
             self.weapon_manager.shot()
         return True
@@ -299,7 +394,7 @@ class Weapon:
             if fire is not None:
                 candidates = pl.sounds_matching(lambda k: '_fire_' in k)
                 if all(c.playing for c in candidates):
-                    fire = min(candidates, key=lambda c: c.duration - c.elapsed_time())
+                    fire = _at_the_sound(min(candidates, key=lambda c: c.duration - c.elapsed_time()))
                     if S3DEngine.engine().play_copy_of(fire):     # let this shot overlap the last one
                         if warning is not None:
                             warning.set_spatialized(False)
@@ -307,14 +402,14 @@ class Weapon:
                             warning.play(False)
                         return
                     break
-            fire = pl.any_sound_containing('_fire_') if pl is not None else None
+            fire = _at_the_sound(pl.any_sound_containing('_fire_')) if pl is not None else None
             if fire is None:
                 # DIVERGENCE: the original spins forever here when no "_fire_" sound exists.
                 log.warning('%s has no _fire_ sound', self.name)
                 return
             if float(self.bullets_in_clip) > float(self.capacity) * 0.2:
                 continue
-            warning = pl.any_sound_with_suffix('_warning')
+            warning = _at_the_sound(pl.any_sound_with_suffix('_warning'))
         fire.set_spatialized(False)
         fire.set_gain(0.6)
         fire.play(False)
@@ -323,15 +418,65 @@ class Weapon:
             warning.set_gain(0.6)
             warning.play(False)
 
-    def play_click_sound(self) -> None:                   # 0x100015f0c
+    def empty_click(self):
+        """The weapon's own "_empty" recording, or None: not every gun has one."""
+        if self.playlist is None:
+            return None
+        return _at_the_sound(self.playlist.any_sound_with_prefix(self.click_sound_prefix))
+
+    def empty_warning(self):
+        """PORT ADDITION: what a gun with no "_empty" recording answers with instead (user request).
+
+        The Machine Gun, the Claymore and the melee weapons have no empty click in `game/sounds/_weapons`,
+        so pulling an empty trigger made no sound at all.  Each of them has a short warning of its own, and
+        that is what answers now - once for a press, and looping while the trigger is held.  It loops with a
+        rhythm already in it: the Machine Gun's is 0.57 s holding 0.36 s of alert, so it beeps and rests.
+
+        Nothing is taken from anywhere else.  This recording is never played by the game as it stands, since
+        `anySoundWihSuffix:@"_warning"` 0x100015dec asks for a name ending in "_warning" and the file is
+        "_warning_b", so it does not match in the original either.  The *looping* warning is left alone on
+        purpose: it is the low-ammo loop under continuous fire, and if an empty gun used it too, running low
+        and running out would be the same sound.  A gun that has its own click is untouched.
+        """
+        if self.playlist is None:
+            return None
+        return _at_the_sound(self.playlist.any_sound_matching(
+            lambda k: '_warning' in k and 'warningloop' not in k))
+
+    def start_empty_loop(self) -> bool:
+        """PORT ADDITION: hold an empty trigger and the warning keeps sounding until it is let go.  True
+        when that is the answer for this gun, so the caller does not click as well."""
+        if self.empty_click() is not None:
+            return False
+        if self.empty_loop is not None:                   # already warning: asking `playing` here would
+            return True                                   # restart it, since play: on a live sound does
+        source = self.empty_warning()
+        if source is None:
+            return False
+        # a voice of its own (S3DSound.copy): the press plays this same recording, and playing a sound that
+        # is already sounding restarts it - the two would cut each other, and a restart pending at the
+        # moment the trigger is let go would start the warning again after it had been stopped
+        loop = source.copy()
+        loop.set_spatialized(False)
+        loop.set_gain(0.6)
+        loop.play(True)
+        self.empty_loop = loop
+        self.announce_reload()                            # said once, when the warning starts
+        return True
+
+    def stop_empty_loop(self) -> None:
+        if self.empty_loop is not None:
+            self.empty_loop.stop()
+            self.empty_loop = None
+
+    def announce_reload(self, announce: bool = False) -> None:
+        """The announcer's "Reload", or "Out of ammo" with nothing left to reload with.  `announce`
+        (PORT ADDITION) says it whatever the five-second gate says: the shot that ran the clip out is the
+        moment it is for."""
         from .parameters import GameParameters
-        click = self.playlist.any_sound_with_prefix(self.click_sound_prefix) if self.playlist else None
-        if click is not None:
-            click.set_spatialized(False)
-            click.play(False)
         if not GameParameters.shared().last_announcer_value():
             return
-        if self.last_announcer_speech <= 5.0:
+        if self.last_announcer_speech <= 5.0 and not announce:
             return
         self.last_announcer_speech = 0.0
         announcer = S3DEngine.engine().play_list_with_name('announcer')
@@ -342,9 +487,18 @@ class Weapon:
         if snd is not None:
             snd.play()
 
+    def play_click_sound(self, announce: bool = False) -> None:   # 0x100015f0c
+        """The empty click and the call-out: what a press on an empty trigger answers with."""
+        click = self.empty_click() or self.empty_warning()
+        if click is not None:
+            click.set_spatialized(False)
+            click.play(False)
+        self.announce_reload(announce)
+
     # --- reload / deploy -------------------------------------------------------------------------
     def reload(self) -> None:                             # 0x1000161cc
         from .parameters import GameParameters
+        self.stop_empty_loop()                            # PORT ADDITION: it is being reloaded now
         if self.bullets_total == 0:
             if not GameParameters.shared().last_announcer_value():
                 return
@@ -359,7 +513,8 @@ class Weapon:
         if self.is_reloading():
             return
         Tracker.shared().reload_weapon_with_remaining_bullets(self.bullets_in_clip, self.name)
-        snd = self.playlist.any_sound_with_prefix(f'weapon_gun_{self.name}_reloadfull') if self.playlist else None
+        snd = _at_the_sound(
+            self.playlist.any_sound_with_prefix(f'weapon_gun_{self.name}_reloadfull')) if self.playlist else None
         self.reload_sound = snd                           # PORT ADDITION: so pause and interrupt find this one
         if snd is not None:
             snd.set_spatialized(False)
@@ -385,13 +540,13 @@ class Weapon:
         self.change_state(1)
         self.time_since_last_shot = self.fire_rate
         pl = self.playlist
-        snd = pl.any_sound_with_prefix(f'weapon_gun_{self.name}_deploy') if pl else None
+        snd = _at_the_sound(pl.any_sound_with_prefix(f'weapon_gun_{self.name}_deploy')) if pl else None
         if snd is not None:
             snd.set_spatialized(False)
             snd.set_gain(0.6)
             snd.play(False)
         if GameParameters.shared().last_announcer_value():
-            voice = pl.any_sound_with_prefix(f'weapon_gun_{self.name}_voice') if pl else None
+            voice = _at_the_sound(pl.any_sound_with_prefix(f'weapon_gun_{self.name}_voice')) if pl else None
             if voice is not None:
                 voice.set_spatialized(False)
                 voice.set_gain(0.6)
@@ -422,8 +577,7 @@ class Weapon:
     def clean(self) -> None:                              # 0x100016a2c
         if self.continuous_sound is not None:
             self.continuous_sound.stop()
-        if self.continuous_warning is not None:
-            self.continuous_warning.stop()
+        self.stop_low_ammo_warning()
 
     def dealloc(self) -> None:                            # 0x100016a78 (called where ARC would release it)
         log.info('Dealloc weapon')
@@ -452,7 +606,7 @@ class MeleeWeapon(Weapon):
         rather than opening it up, and it was a deliberate change to a game that was not asking for one:
         a melee weapon sounding from the hand is what the original does, on purpose, and this port's
         business is that game rather than a better idea of it."""
-        snd = self.playlist.any_sound_containing('_hit_') if self.playlist else None
+        snd = _at_the_sound(self.playlist.any_sound_containing('_hit_')) if self.playlist else None
         if snd is not None:
             snd.set_spatialized(False)
             snd.set_gain(0.8)
@@ -460,7 +614,7 @@ class MeleeWeapon(Weapon):
 
     def play_miss_sound(self) -> None:                    # 0x100007610
         """Not spatialised, and right not to be: a miss is your own swing, and it hit nothing."""
-        snd = self.playlist.any_sound_containing('_miss_') if self.playlist else None
+        snd = _at_the_sound(self.playlist.any_sound_containing('_miss_')) if self.playlist else None
         if snd is not None:
             snd.set_spatialized(False)
             snd.set_gain(0.8)

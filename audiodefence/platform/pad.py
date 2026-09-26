@@ -175,8 +175,10 @@ def button_words(action: str, mode: str | None = None):
 PAD_DEFAULTS = {
     'fire': ('righttrigger',),
     'melee': ('rightshoulder',),
-    'next_weapon': {'button': ('leftshoulder',), 'gesture': ('stickup',)},
-    'reload': {'button': ('lefttrigger',), 'gesture': ('stickdown',)},
+    # PORT ADDITION (user request): the D-pad switches weapon and reloads in Gesture mode, as it turns in
+    # both - a flick of a stick is the gesture the original swipes with, and the D-pad is steadier.
+    'next_weapon': {'button': ('leftshoulder',), 'gesture': ('stickup', 'dpup')},
+    'reload': {'button': ('lefttrigger',), 'gesture': ('stickdown', 'dpdown')},
     'turn_left': ('dpleft',),                             # the sticks turn as well, and are not bound here
     'turn_right': ('dpright',),
     'pause': ('start',),
@@ -192,6 +194,11 @@ PAD_PROFILES_KEY = 'padmaps'
 PAD_LABELS = {'turn_left': 'Alternate turn left', 'turn_right': 'Alternate turn right'}
 
 PAD_DEFAULTS_KEY = 'padmap'
+#: PORT ADDITION: what a binding's default used to be, for the ones that have gained a button since the
+#: profiles in keys.json started being written.  A stored list that is still exactly the old default is one
+#: the player never touched, and takes the new default; anything they have changed is left as they left it.
+PAD_WAS = {'next_weapon': {'gesture': ['stickup']},
+           'reload': {'gesture': ['stickdown']}}
 
 
 def _default_bindings() -> dict:
@@ -231,7 +238,10 @@ class PadMap:
                 if isinstance(self.bindings[action], dict) and isinstance(value, dict):
                     for mode, names in value.items():
                         if mode in self.bindings[action] and isinstance(names, list):
-                            self.bindings[action][mode] = [str(n) for n in names]
+                            names = [str(n) for n in names]
+                            if names == PAD_WAS.get(action, {}).get(mode):
+                                continue                  # never touched: it takes the default as it is now
+                            self.bindings[action][mode] = names
                 elif isinstance(value, list):
                     self.bindings[action] = [str(n) for n in value]
         if new:                                           # a kind not seen before gets a profile now

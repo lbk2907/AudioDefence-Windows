@@ -244,6 +244,14 @@ class Enemy:
         elif st == 8:
             self._move(dt, *self.orientation)
             if self.squared_distance < 0.09:
+                # DIVERGENCE (user request): a berserk enemy that reaches the player goes straight to
+                # `attack` in the original - case 8 at 0x10005f398 has no notification, where case 3 posts
+                # one at 0x10005f16c - so nothing told ADInGameStats that the player had died.  The
+                # Berserk's own "killed you" count stayed 0 however many times it killed you
+                # (`death_by_enemy_with_name` is only reached through this notification), and the Deaths
+                # total missed it as well, `save_stats` asking `update_deaths` only when the same
+                # notification has set its flag.  It is the one enemy that kills from this state.
+                RunLoop.main().post('PLAYER_DIED', None, {'PARAM_ARRAY': [self.name]})
                 action = self.attack
         elif st == 9:
             if self.time_in_state > 0.1 and self.time_in_state > self._duration(self.sound):
@@ -280,6 +288,14 @@ class Enemy:
             self.aggressive()
         elif self._state == 2:
             self.walk()
+        elif self._state == 8:
+            # DIVERGENCE: 0x10005fe54 answers for states 2 and 3 only (user request).  A hit stops the
+            # enemy's own loop so the pain sound can be heard and asks for it back when that sound ends
+            # (`play_hit_sound_for_damages`), but a Berserk charging the player is in state 8, which this
+            # does not answer - so the growl stopped at the first hit and never came back, and the thing
+            # running at you ran at you in silence.  `berserk` cannot be called to bring it back: it
+            # returns at once when the state is already 8, being the method that sets it.
+            self.play_any_sound_containing('_aggressive', True, True)
 
     def dodge(self) -> None:                              # 0x10005fefc
         self.set_state(7)
