@@ -81,14 +81,23 @@ A language is a single file, `localization/<code>.json`: a flat map from the
 English phrase to the phrase in that language. Nothing is compiled and no code
 is written — the phrases are data.
 
-1. Copy `localization/ru.json` and translate the right-hand side of each pair.
-   Leave a phrase out and it stays English, so a part-finished file is usable.
-2. Add the code and the language's own name to `LANGUAGES` in
+1. Run `py tools/make_language.py <code>` — `de`, `fr`, `ja`. It writes
+   `localization/<code>.json` holding every phrase the port can put in front of
+   a player, each one empty, so you have the list rather than having to find it.
+2. Fill in the empty phrases. An empty one stays English, so a part-finished
+   file works: what is translated is translated, and the rest is not.
+3. Add the code and the language's own name to `LANGUAGES` in
    `audiodefence/game/parameters.py`, which is what the Settings row offers.
-3. Run `py tools/verify_localization.py`. It walks every phrase the port can
+4. Run `py tools/verify_localization.py`. It walks every phrase the port can
    show or speak — from the port's own code and from the game's data — and
    fails if one is still English, so a language cannot quietly fall behind as
    the port grows.
+
+Run `make_language.py` again whenever the port gains text: a file that exists
+keeps everything already translated and only the new phrases arrive empty.
+
+A language arrives with a release, because the phrase files are built into the
+game. Adding one to a copy you already have means waiting for the next build.
 
 The layer handles what a flat list cannot: `%i` and `%s` are substituted and
 the counted word is inflected, which Russian needs (1 монета, 2 монеты,
@@ -1023,6 +1032,8 @@ it — and compare side by side.
     py tools/nib_layout.py --all ADMainMenuViewController   a screen's frames and labels
     py tools/verify_stats.py                          every weapon and enemy vs the plists
     py tools/verify_updater.py                        the updater, end to end, offline
+    py tools/verify_localization.py                   every phrase a player reads, in each language
+    py tools/make_language.py de                      a language file to fill in, or refresh one
 
 The digests are condensed and sometimes drop code that matters — when a branch
 does not add up, read the `.s` listing for the same function. Annotation

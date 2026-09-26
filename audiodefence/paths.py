@@ -14,6 +14,7 @@ beside it can be seen.
 """
 from __future__ import annotations
 
+import logging
 import os
 import sys
 
@@ -36,6 +37,14 @@ VENDOR = os.path.join(ROOT, 'vendor')
 #: PORT ADDITION: the phrase files the optional localization reads (audiodefence/localization.py).
 #: Bundled like assets/, so a language file lives inside the build.
 LOCALIZATION = os.path.join(ROOT, 'localization')
+if not FROZEN:
+    # Run from source, the folder is the repository's own and a language file is put here by hand, so make
+    # it when it is not there - a checkout with it deleted, or one taken before the languages existed.
+    # A build's is inside the bundle, where nothing can be added after it is made, so it is left alone.
+    try:
+        os.makedirs(LOCALIZATION, exist_ok=True)
+    except OSError as exc:                                # a read-only checkout: English, and no complaint
+        logging.getLogger('paths').info('no localization folder, and none could be made: %s', exc)
 OPENAL_DLL = (os.path.join(VENDOR, 'openal-mac', 'libopenal.dylib') if host.MAC else
               os.path.join(VENDOR, 'openal', 'soft_oal.dll'))
 NVDA_DLL = os.path.join(VENDOR, 'nvda', 'nvdaControllerClient64.dll')
