@@ -1,4 +1,6 @@
 unrelease:
+
+26.09.26-1:
 The game runs on the Mac too, in its own build on the same release. It speaks through VoiceOver, or through the system voice when VoiceOver is off.
 The game can be played in another language. The Miscellaneous tab in Settings has a Language row; the announcer and the game's own recordings stay in English.
 SAPI 5 responds as quickly as a screen reader does: it starts sooner, stops the moment you interrupt it, and no longer holds the game up while it speaks. The Speech tab in Settings has a Use modern output row for it, on by default. Turning it on or off takes hold at once.
