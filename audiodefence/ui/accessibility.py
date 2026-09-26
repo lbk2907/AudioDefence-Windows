@@ -31,9 +31,6 @@ import pygame
 
 from ..platform import host as system
 from .. import localization
-from .. import localization
-from .. import localization
-from .. import localization
 from ..s3d.engine import S3DEngine
 from .screens import Screen, joined, menu_music_volume_key
 

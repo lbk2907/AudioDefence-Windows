@@ -74,6 +74,11 @@ running it again costs the time it takes and says nothing.  So:
   on top of the fix.  Say which change made it worth running again.
 * A smoke run of the real game is worth one pass at the end of a piece of work, not one per edit.
 
+**Text the player reads or hears has to be translated too.**  The port can be played in another language
+(`localization/`), and `py tools/verify_localization.py` fails when a phrase the player can reach is still
+English.  Run it after changing or adding anything a screen says, and put the new phrase in each language
+file - on 2026-09-26 it caught four that a week of changes had left behind.
+
 **A rule needs all of them, not a handful.**  Whenever a change turns on a threshold, a flag or a test that
 will be applied across a whole set - every sound, every screen, every enemy - measure the whole set before
 settling it, and say in the commit how many were looked at.  Twice on 2026-09-25 a rule drawn from the few

@@ -64,6 +64,43 @@ order VoiceOver read it, with the same labels and hints, and a good number of
 places where the original said the wrong thing or nothing at all have been
 fixed. They are all listed under *How faithful this is*.
 
+## Languages
+
+The game can be played in another language. **Settings → Miscellaneous →
+Language** chooses it, and the choice is kept with your other settings. English
+is the default, and a player who never opens that row sees and hears exactly
+what the port always showed.
+
+This release includes **Russian** (1,013 phrases), contributed by
+[shokrar](https://github.com/shokrar). What is translated is everything on
+screen and everything the screen reader speaks: the menus, settings, the
+armory, statistics, the Zombiepedia, the challenge screens, tarot and roulette,
+the tutorial lines and the credits.
+
+**What stays English** is the recorded audio — the announcer calling out your
+kills, and the game's own spoken lines. Those are sound files, not text, so no
+translation can reach them.
+
+### Adding a language
+
+A language is a single file, `localization/<code>.json`: a flat map from the
+English phrase to the phrase in that language. Nothing is compiled and no code
+is written — the phrases are data.
+
+1. Copy `localization/ru.json` and translate the right-hand side of each pair.
+   Leave a phrase out and it stays English, so a part-finished file is usable.
+2. Add the code and the language's own name to `LANGUAGES` in
+   `audiodefence/game/parameters.py`, which is what the Settings row offers.
+3. Run `py tools/verify_localization.py`. It walks every phrase the port can
+   show or speak — from the port's own code and from the game's data — and
+   fails if one is still English, so a language cannot quietly fall behind as
+   the port grows.
+
+The layer handles what a flat list cannot: `%i` and `%s` are substituted and
+the counted word is inflected, which Russian needs (1 монета, 2 монеты,
+5 монет), and a line the port assembles from pieces is translated piece by
+piece.
+
 ## How this was made
 
 This is a vibe-coded project, and it says so plainly because the method is the
@@ -594,7 +631,7 @@ can be checked against the binary or put back. Listed below are the ones you wou
 rest are internal — analytics that only log locally, a sanity check that only printed, an undefined return
 value nothing reads.
 
-There are **126 divergences** and **15 original quirks kept on purpose** in the notes, of which 73 are
+There are **127 divergences** and **15 original quirks kept on purpose** in the notes, of which 73 are
 listed here.
 
 ### 1. Windows standing in for a phone

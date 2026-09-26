@@ -1089,6 +1089,21 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   a question the player asked, still offers it).  The buttons carry hints, which UIAlertView's do not.
   `tools/verify_updater.py` proves the whole path offline, against a local server that serves ranges and
   a real hand-off, on a folder whose name has a space and Arabic in it.
+* PORT ADDITION: the game can be played in another language (contributed).  The original ships `en.lproj`
+  and `it.lproj` and `game/data.py` reads `en.lproj` as a constant, so the game was built to be translated;
+  it never was.  `audiodefence/localization.py` reads `localization/<code>.json`, a flat map of an English
+  phrase to that language's, and every place the port already gathers text goes through it - `View.label`,
+  `View.hint` and `View.text` as properties, `MenuItem`'s label and hint, a `MenuScreen`'s title,
+  `AccessibleScreen.page_title`, `data.localized()`, and `Speech.speak` as the last resort, so nothing the
+  player hears escapes it.  The port's own small vocabulary - Selected, dimmed, button, heading - goes
+  through the same table, so a translated screen cannot be left with one English word in the middle of a
+  sentence.  A line is matched whole first, then as a template (`%i`, `%s`) with the counted word inflected,
+  which Russian needs, then by the pieces the port assembles itself, and last by looking for phrases it
+  knows inside a longer line.  Nothing is translated while the language is English, which is the default.
+  `tools/verify_localization.py` walks every phrase the port can show or speak and fails when one is still
+  English.  The recorded audio - the announcer and the game's spoken lines - stays English: it is sound, not
+  text.
+
 * PORT ADDITION: key names are spoken as the keys people call them.  pygame's names for the two Enter keys
   are "return" and "enter", which read out as "Return or Enter" and sound like one key said twice; they are
   "Enter" and "Numpad Enter" here, the arrows are "Left Arrow" and so on, and space is "Spacebar".

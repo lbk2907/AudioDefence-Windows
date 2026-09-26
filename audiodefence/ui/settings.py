@@ -479,6 +479,7 @@ class ControlSchemePanel:
         params.set_modern_audio(params.DEFAULT_MODERN_AUDIO)
         params.set_names_controller(None)
         params.set_speech_output(params.DEFAULT_SPEECH_OUTPUT)
+        params.set_language(params.DEFAULT_LANGUAGE)
         params.set_sapi(voice=None, rate=None, boost=False, pitch=0, volume=None)
         App.apply_menu_music_volume()
         self.reload_data()

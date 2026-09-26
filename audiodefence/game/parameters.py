@@ -292,7 +292,10 @@ class GameParameters:
         return value if value in dict(self.LANGUAGES) else self.DEFAULT_LANGUAGE
 
     def set_language(self, value: str) -> None:
+        from ..localization import load                   # here: localization asks this module for it
         self.defaults.set_object(value, 'language')
+        self.defaults.synchronize()
+        load(value, force=True)                           # every caller takes effect, not only Settings
 
     #: PORT ADDITION: Settings -> Speech -> Use modern output: whether the game plays what SAPI 5 says
     #: through its own sound (platform/speech_audio.py), where a line stops the instant it is interrupted,
