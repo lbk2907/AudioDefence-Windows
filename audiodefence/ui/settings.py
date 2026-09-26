@@ -151,6 +151,13 @@ class ControlSchemePanel:
                    hint='Press Enter to toggle in-game announcements.', action=self.toggle_announcer)
             t.cell('Test headphones', hint='Press Enter to test your headphones.', action=self.test_headphones)
         elif self.category == 'misc':                     # PORT ADDITION: everything else
+            # Language leads the tab: it decides what every other row on every screen is read in,
+            # so a player who wants it should not have to walk past the rest to reach it (user request).
+            t.cell('Language', dict(params.LANGUAGES)[params.language()],
+                   hint="The language the port's own text is shown and spoken in. English is what "
+                        'the port was written in; another language translates it as it is read, which '
+                        'takes effect as each screen is opened again. Press Enter for the list.',
+                   action=self.choose_language, shift_action=self.choose_language)
             if params.controller_names():                 # the Control and Tab keys have no button
                 axis_hint = 'Press Enter to move through menus with the other pair of D-pad directions.'
             else:
@@ -164,12 +171,6 @@ class ControlSchemePanel:
             t.cell('Tutorial text', self.tutorial_text_text(),
                    hint='Press Enter for the next setting and Shift plus Enter for the previous.',
                    action=self.step_tutorial_text, shift_action=self.step_tutorial_text_back)
-            t.cell('Language', dict(params.LANGUAGES)[params.language()],
-                   hint="The language the port's own text is shown and spoken in. English is what "
-                        'the port was written in; another language translates it as it is read, which '
-                        'takes effect as each screen is opened again. Press Enter for the next '
-                        'language and Shift plus Enter for the previous.',
-                   action=self.step_language, shift_action=self.step_language_back)
             from ..platform.pad import Pads
             models = Pads.shared().connected_models()
             row = t.cell('Names in hints and tutorial', dict(params.KEY_NAMES)[params.key_names()],
@@ -544,19 +545,20 @@ class ControlSchemePanel:
     def step_trigger_level_back(self) -> None:
         self.step_trigger_level(-1)
 
-    def step_language(self, step: int = 1) -> None:
-        """The next language, read in as soon as it is chosen, so the rows and the screens that
-        are opened after this one are in it.  A row already on screen keeps the text it was built
-        with until the screen is opened again."""
+    def choose_language(self) -> None:
+        """PORT ADDITION: the languages as a list of their own (user request), as Speech output and the
+        SAPI 5 voice are.  Each language names itself in its own script, so stepping through them reads
+        one out in a language the player may not have chosen yet; the list says them once."""
         params = GameParameters.shared()
-        keys = [key for key, _name in params.LANGUAGES]
-        params.set_language(keys[(keys.index(params.language()) + step) % len(keys)])
-        localization.load(params.language(), force=True)   # PORT ADDITION: read it in at once
-        self.reload_data()
-        self.announce('Language: %s' % dict(params.LANGUAGES)[params.language()])
+        self.open_choices('Language', list(params.LANGUAGES), params.language(), self.take_language)
 
-    def step_language_back(self) -> None:
-        self.step_language(-1)
+    def take_language(self, choice: str) -> None:
+        """The chosen language, read in at once, so the rows rebuilt after this and every screen opened
+        afterwards are in it.  A row already on screen keeps the text it was built with."""
+        params = GameParameters.shared()
+        params.set_language(choice)                       # which loads it (GameParameters.set_language)
+        self.reload_data()
+        self.announce('Language: %s' % dict(params.LANGUAGES)[choice])
 
     def toggle_key_names(self) -> None:
         params = GameParameters.shared()

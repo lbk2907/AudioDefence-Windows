@@ -1100,6 +1100,11 @@ The heading itself goes through the original scroll-view model: a 430-point `lin
   sentence.  A line is matched whole first, then as a template (`%i`, `%s`) with the counted word inflected,
   which Russian needs, then by the pieces the port assembles itself, and last by looking for phrases it
   knows inside a longer line.  Nothing is translated while the language is English, which is the default.
+  A conjunction does not by itself make a line translated (`_JOINS`): " and " is a phrase in the table, so
+  a line the layer could split but not otherwise translate came back with only its conjunction changed -
+  "the text is shown и spoken in" - which reads worse than leaving it alone.  The Language row is the first
+  in Miscellaneous and opens its choices as a list, as Speech output and the SAPI 5 voice do, because each
+  language names itself in its own script and stepping would read one out in a language not yet chosen.
   `tools/verify_localization.py` walks every phrase the port can show or speak and fails when one is still
   English.  The recorded audio - the announcer and the game's spoken lines - stays English: it is sound, not
   text.

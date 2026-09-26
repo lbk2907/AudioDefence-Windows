@@ -352,6 +352,13 @@ def _apply_rules(text: str, rules):
     return None
 
 
+#: the conjunctions `_SEGMENT_JOIN` splits on.  They are phrases in their own right - " and " is in the
+#: table - so a line that can be split by one and translated no further would come back with only its
+#: conjunction in the new language ("the text is shown и spoken in"), which reads worse than leaving the
+#: line alone.  A conjunction is substituted, but it does not by itself make a line translated.
+_JOINS = (' and ', ' or ')
+
+
 def _parts(text: str, splitter):
     """Translate piece by piece.  None when not one piece was found."""
     parts = splitter.split(text)
@@ -360,6 +367,9 @@ def _parts(text: str, splitter):
     changed = False
     out = []
     for part in parts:
+        if part in _JOINS:                               # glue, not a piece: see _JOINS
+            out.append(_table.get(part, part))
+            continue
         if part in _SEPARATORS:
             out.append(part)
             continue
